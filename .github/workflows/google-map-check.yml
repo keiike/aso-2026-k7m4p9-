@@ -31,8 +31,10 @@ jobs:
           threading.Thread(target=server.serve_forever,daemon=True).start()
           results=[]
           async def wait_for_map_image(page):
+            await page.locator('.google-map-stage').scroll_into_view_if_needed()
+            await page.wait_for_timeout(1500)
             fr=await (await page.query_selector('#google-map-frame')).content_frame()
-            await fr.wait_for_function('Array.from(document.images).some(i => i.complete && i.naturalWidth >= 200)',timeout=35000)
+            await fr.wait_for_function('Array.from(document.images).some(i => i.complete && i.naturalWidth >= 200)',timeout=25000)
             return fr
           async def main():
             async with async_playwright() as p:
@@ -41,36 +43,40 @@ jobs:
                 for width,height in [(390,844),(1366,900)]:
                   page=await browser.new_page(viewport={'width':width,'height':height},locale='ja-JP',timezone_id='Asia/Tokyo')
                   errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-                  await page.goto('http://127.0.0.1:8765/',wait_until='networkidle',timeout=45000)
-                  await page.wait_for_selector('#map-background option[value=google]',state='attached')
-                  assert await page.locator('#map').get_attribute('data-candidate-count')=='29'
-                  await page.select_option('#map-background','google')
-                  await page.wait_for_selector('#google-map-frame',state='visible')
-                  assert await page.locator('[data-map-layer=antiques]').is_disabled()
-                  fr=await wait_for_map_image(page)
-                  assert 'Access blocked' not in await fr.locator('body').inner_text()
-                  await page.locator('.google-map-stage').screenshot(path=str(out/f'google-area-{width}.png'))
-                  await page.select_option('#map-place-select','antiques-1')
-                  await page.wait_for_timeout(1500)
-                  fr=await wait_for_map_image(page)
-                  assert 'etu' in await page.locator('#google-map-frame').get_attribute('src')
-                  await page.locator('.google-map-stage').screenshot(path=str(out/f'google-etu-{width}.png'))
-                  await page.locator('.back-to-gsi').click()
-                  assert not await page.locator('#google-map-frame').is_visible()
-                  assert not await page.locator('[data-map-layer=antiques]').is_disabled()
-                  await page.select_option('#map-background','std')
-                  assert await page.locator('#map').get_attribute('data-candidate-count')=='29'
-                  await page.select_option('#map-place-select','antiques-1')
-                  await page.wait_for_timeout(400)
-                  assert await page.locator('.leaflet-popup').count()==1
-                  await page.locator('#map').screenshot(path=str(out/f'gsi-return-{width}.png'))
-                  await page.select_option('#map-background','google')
-                  await page.locator('.view-on-map').first.click()
-                  assert await page.locator('#map').get_attribute('data-map-view')=='gsi'
-                  assert not await page.evaluate('document.documentElement.scrollWidth>innerWidth')
-                  assert not errors,errors
-                  results.append({'width':width,'googleMapImageLoaded':True,'individualPlaceSelection':True,'returnToGsi':True,'candidateCount':29,'errors':errors})
-                  await page.close()
+                  try:
+                    await page.goto('http://127.0.0.1:8765/',wait_until='networkidle',timeout=45000)
+                    await page.wait_for_selector('#map-background option[value=google]',state='attached')
+                    assert await page.locator('#map').get_attribute('data-candidate-count')=='29'
+                    await page.select_option('#map-background','google')
+                    await page.wait_for_selector('#google-map-frame',state='visible')
+                    assert await page.locator('[data-map-layer=antiques]').is_disabled()
+                    fr=await wait_for_map_image(page)
+                    assert 'Access blocked' not in await fr.locator('body').inner_text()
+                    await page.locator('.google-map-stage').screenshot(path=str(out/f'google-area-{width}.png'))
+                    await page.select_option('#map-place-select','antiques-1')
+                    fr=await wait_for_map_image(page)
+                    assert 'etu' in await page.locator('#google-map-frame').get_attribute('src')
+                    await page.locator('.google-map-stage').screenshot(path=str(out/f'google-etu-{width}.png'))
+                    await page.locator('.back-to-gsi').click()
+                    assert not await page.locator('#google-map-frame').is_visible()
+                    assert not await page.locator('[data-map-layer=antiques]').is_disabled()
+                    await page.select_option('#map-background','std')
+                    assert await page.locator('#map').get_attribute('data-candidate-count')=='29'
+                    await page.select_option('#map-place-select','antiques-1')
+                    await page.wait_for_timeout(400)
+                    assert await page.locator('.leaflet-popup').count()==1
+                    await page.locator('#map').screenshot(path=str(out/f'gsi-return-{width}.png'))
+                    await page.select_option('#map-background','google')
+                    await page.locator('.view-on-map').first.click()
+                    assert await page.locator('#map').get_attribute('data-map-view')=='gsi'
+                    assert not await page.evaluate('document.documentElement.scrollWidth>innerWidth')
+                    assert not errors,errors
+                    results.append({'width':width,'googleMapImageLoaded':True,'individualPlaceSelection':True,'returnToGsi':True,'candidateCount':29,'errors':errors})
+                  except Exception:
+                    await page.screenshot(path=str(out/f'failure-{width}.png'))
+                    raise
+                  finally:
+                    await page.close()
               finally:
                 (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
                 await browser.close()

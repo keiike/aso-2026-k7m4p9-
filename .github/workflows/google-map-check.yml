@@ -1,0 +1,102 @@
+name: Test and enable Google map view
+on:
+  push:
+    paths:
+      - '.github/workflows/google-map-check.yml'
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Prepare page and verify both map views
+        run: |
+          mkdir -p /tmp/map-test-results
+          python - <<'PY'
+          import asyncio, functools, http.server, json, pathlib, threading
+          from playwright.async_api import async_playwright
+          root=pathlib.Path.cwd()
+          index=root/'index.html'
+          original=index.read_text()
+          old='<script src="map.js?v=20260920-map2"></script>'
+          new='<script src="google-map-view.js?v=20260920-google1"></script>\n'+old
+          assert original.count(old)==1
+          assert 'google-map-view.js' not in original
+          changed=original.replace(old,new)
+          changed=changed.replace('<b>9/20更新：背景地図を国土地理院へ変更。</b>', '<b>9/20更新：Googleマップ表示も選択可能。</b> 背景メニューから切り替え。Googleは地点の個別表示、ルートと全候補ピンは地理院地図で確認。')
+          changed=changed.replace('国土地理院地図・追加候補29か所の表示切替版。','Googleマップ埋め込み追加・候補29か所表示切替版。')
+          assert 'noindex,nofollow,noarchive,nosnippet' in changed
+          index.write_text(changed)
+          server=http.server.ThreadingHTTPServer(('127.0.0.1',8765),functools.partial(http.server.SimpleHTTPRequestHandler,directory=str(root)))
+          threading.Thread(target=server.serve_forever,daemon=True).start()
+          results=[]
+          out=pathlib.Path('/tmp/map-test-results')
+          async def main():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True)
+              try:
+                for width,height in [(390,844),(1366,900)]:
+                  page=await browser.new_page(viewport={'width':width,'height':height},locale='ja-JP',timezone_id='Asia/Tokyo')
+                  errors=[]
+                  page.on('pageerror',lambda e:errors.append(str(e)))
+                  await page.goto('http://127.0.0.1:8765/',wait_until='networkidle',timeout=45000)
+                  await page.wait_for_selector('#map-background option[value=google]',state='attached',timeout=15000)
+                  assert await page.locator('#map').get_attribute('data-candidate-count')=='29'
+                  assert await page.locator('.map-pin,.cluster-pin').count()>0
+                  await page.select_option('#map-background','google')
+                  await page.wait_for_selector('#google-map-frame',state='visible')
+                  assert await page.locator('[data-map-layer=antiques]').is_disabled()
+                  frame=page.frame_locator('#google-map-frame')
+                  await frame.locator('.gm-style').wait_for(timeout=25000)
+                  await page.wait_for_timeout(3000)
+                  area_body=await frame.locator('body').inner_text()
+                  assert 'Access blocked' not in area_body
+                  await page.locator('.google-map-stage').screenshot(path=str(out/f'google-area-{width}.png'))
+                  await page.select_option('#map-place-select','antiques-1')
+                  assert 'etu' in await page.locator('#google-map-frame').get_attribute('src')
+                  await page.wait_for_timeout(3500)
+                  await frame.locator('.gm-style').wait_for(timeout=25000)
+                  place_body=await frame.locator('body').inner_text()
+                  assert 'etu' in place_body.lower(), place_body[:500]
+                  await page.locator('.google-map-stage').screenshot(path=str(out/f'google-etu-{width}.png'))
+                  await page.locator('.back-to-gsi').click()
+                  assert not await page.locator('#google-map-frame').is_visible()
+                  assert not await page.locator('[data-map-layer=antiques]').is_disabled()
+                  await page.select_option('#map-background','std')
+                  assert await page.locator('#map').get_attribute('data-candidate-count')=='29'
+                  await page.select_option('#map-place-select','antiques-1')
+                  await page.wait_for_timeout(300)
+                  assert await page.locator('.leaflet-popup').count()==1
+                  await page.locator('#map').screenshot(path=str(out/f'gsi-return-{width}.png'))
+                  await page.select_option('#map-background','google')
+                  await page.locator('.view-on-map').first.click()
+                  assert await page.locator('#map').get_attribute('data-map-view')=='gsi'
+                  overflow=await page.evaluate('document.documentElement.scrollWidth>innerWidth')
+                  assert not overflow
+                  assert not errors,errors
+                  results.append({'width':width,'errors':errors,'candidateCount':29,'googleArea':area_body[:700],'googlePlace':place_body[:700],'returnToGsi':True,'horizontalOverflow':overflow})
+                  await page.close()
+              finally:
+                (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+                await browser.close()
+          asyncio.run(main())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: google-map-check
+          path: /tmp/map-test-results/
+          retention-days: 1
+      - name: Enable only after browser checks pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Enable tested optional Google Maps embed without changing itinerary pins'
+          git push

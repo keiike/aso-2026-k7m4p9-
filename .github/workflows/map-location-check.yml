@@ -1,0 +1,75 @@
+name: Map location check
+on:
+  push:
+    paths:
+      - '.github/workflows/map-location-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve published shop addresses and check map assets
+        shell: bash
+        run: |
+          mkdir -p map-check
+          python3 - <<'PY'
+          import json, re, time, urllib.request, urllib.parse, pathlib
+          out=pathlib.Path('map-check')
+          source=pathlib.Path('guide.js').read_text()
+          rows=[]
+          for line in source.splitlines():
+              n=re.search(r"name:'([^']*)'",line)
+              a=re.search(r"address:'([^']*)'",line)
+              if n and a:
+                  rows.append({'name':n.group(1),'address':a.group(1)})
+          def get(url):
+              req=urllib.request.Request(url,headers={'User-Agent':'AsoTripMapLocationCheck/1.0 (+https://keiike.github.io/aso-2026-k7m4p9-/)','Referer':'https://keiike.github.io/'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  return r.read()
+          for item in rows:
+              address=re.split(r'[ （(]',item['address'])[0]
+              queries=[address]
+              if re.search(r'\d+-\d+-\d+$',address):
+                  queries.append(re.sub(r'-\d+$','',address))
+              queries.append(re.sub(r'[0-9０-９].*$','',address))
+              item['attempts']=[]
+              for query in dict.fromkeys(queries):
+                  url='https://msearch.gsi.go.jp/address-search/AddressSearch?'+urllib.parse.urlencode({'q':query})
+                  try:
+                      result=json.loads(get(url))
+                      item['attempts'].append({'query':query,'result':result})
+                      if result:
+                          item['query']=query
+                          item['results']=result
+                          break
+                  except Exception as e:
+                      item['attempts'].append({'query':query,'error':str(e)})
+                  finally:
+                      time.sleep(1.1)
+              print(item['name'],item.get('results',[])[:1],flush=True)
+          (out/'locations.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
+          assets={
+              'leaflet.js':'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+              'leaflet.css':'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+              'gsi-pale.png':'https://cyberjapandata.gsi.go.jp/xyz/pale/10/884/412.png',
+              'gsi-std.png':'https://cyberjapandata.gsi.go.jp/xyz/std/10/884/412.png'
+          }
+          report={}
+          for name,url in assets.items():
+              try:
+                  data=get(url)
+                  (out/name).write_bytes(data)
+                  report[name]={'bytes':len(data),'url':url,'ok':True}
+              except Exception as e:
+                  report[name]={'ok':False,'error':str(e),'url':url}
+          (out/'assets.json').write_text(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: map-location-check
+          path: map-check/
+          retention-days: 1

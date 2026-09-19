@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet"><meta name="googlebot" content="noindex,nofollow,noarchive,nosnippet">
+<title>阿蘇旅 2026｜地図と行程</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--ink:#26343b;--muted:#68767c;--line:#dce2e4;--d1:#b8612f;--d2:#2b7655;--d3:#37739d}
+*{box-sizing:border-box}body{margin:0;background:#f4f6f5;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.6}
+main{max-width:1080px;margin:22px auto;background:white;padding:28px 32px;box-shadow:0 5px 25px #0000000c}
+h1{font-size:30px;margin:0}.sub{color:var(--muted);font-size:13px;margin:4px 0 18px}.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+#map{height:610px;border:1px solid #ccd5d8;border-radius:6px}.legend{display:flex;gap:14px;font-size:11px;margin:7px 0;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}.day{border-top:3px solid var(--c);padding-top:10px;margin-bottom:18px}
+.day h2{font-size:17px;margin:0 0 8px;color:var(--c)}.row{display:grid;grid-template-columns:66px 1fr;gap:8px;font-size:13px;margin:4px 0}.t{color:var(--muted)}
+.note{font-size:11px;color:var(--muted);margin:7px 0}.memo{border-top:1px solid var(--line);padding-top:13px;font-size:12px}.memo b{display:block;margin-bottom:4px}
+a{color:#245f83}.leaflet-popup-content{font-family:inherit;line-height:1.45}.leaflet-control-attribution{font-size:9px}
+footer{margin-top:18px;border-top:1px solid var(--line);padding-top:9px;color:var(--muted);font-size:10px}
+@media(max-width:760px){body{background:#fff}main{margin:0;padding:20px 15px;box-shadow:none}h1{font-size:26px}.grid{grid-template-columns:1fr}#map{height:500px}.row{grid-template-columns:64px 1fr}}
+@media print{main{box-shadow:none;margin:0;max-width:none;padding:0}.grid{grid-template-columns:1.1fr 1fr}#map{height:520px}}
+</style></head><body><main>
+<h1>阿蘇旅 2026 <span style="font-weight:400;font-size:.65em">2泊3日</span></h1>
+<p class="sub">9/20（日）– 9/22（火）｜宿：ユースホステル 村田家旅館（高森）｜車：中洲発着レンタカー</p>
+<div class="grid"><section><div id="map"></div><div class="legend">
+<span><i class="dot" style="background:var(--d1)"></i>1日目</span><span><i class="dot" style="background:var(--d2)"></i>2日目</span><span><i class="dot" style="background:var(--d3)"></i>3日目</span></div>
+<p class="note">地図は実際の地理上の位置にスポットを配置。線は訪問順を示す概略で、ナビ経路ではありません。</p></section>
+<section>
+<div class="day" style="--c:var(--d1)"><h2>9/20（日）黒川温泉・大観峰</h2>
+<div class="row"><span class="t">08:00</span><span>中洲でレンタカー貸出 → 出発</span></div>
+<div class="row"><span class="t">昼前後</span><span>Au Pan & Coffee → Patisserie ROKU 麓</span></div>
+<div class="row"><span class="t">午後</span><span>黒川温泉で散策・立ち寄り湯</span></div>
+<div class="row"><span class="t">午後</span><span>大観峰展望所 <small>※遅れたら22日へ</small></span></div>
+<div class="row"><span class="t">18:00</span><span><b>村田家旅館 チェックイン</b></span></div></div>
+<div class="day" style="--c:var(--d2)"><h2>9/21（月）草千里の朝・宮地</h2>
+<div class="row"><span class="t">05:15頃</span><span>高森を出発</span></div>
+<div class="row"><span class="t">06:15頃</span><span><b>草千里ヶ浜</b>を早朝散策</span></div>
+<div class="row"><span class="t">09:00</span><span>阿蘇火山博物館</span></div>
+<div class="row"><span class="t">10:00頃</span><span>阿蘇草千里乗馬クラブ → 米塚</span></div>
+<div class="row"><span class="t">午後</span><span>宮地：komeko／森本金物店／etu</span></div>
+<div class="row"><span class="t">夕方</span><span>高森へ戻って2泊目</span></div>
+<p class="note">宿の朝食時刻と早朝出発の両立は前日に相談。</p></div>
+<div class="day" style="--c:var(--d3)"><h2>9/22（火）南阿蘇・帰福</h2>
+<div class="row"><span class="t">朝</span><span>宿で朝食・チェックアウト</span></div>
+<div class="row"><span class="t">午前</span><span>めるころ パン工房</span></div>
+<div class="row"><span class="t">11:30頃</span><span>もちとこ</span></div>
+<div class="row"><span class="t">午後</span><span>ミルクロード経由で福岡へ</span></div>
+<div class="row"><span class="t">9/23 08:00</span><span>中洲店へレンタカー返却</span></div></div>
+<div class="memo"><b>メモ</b>
+・草千里は早朝訪問を想定。山上は朝晩冷えやすい。<br>
+・天候次第で21日と22日の一部を入替可。<br>
+・阿蘇山火口・砂千里ヶ浜は規制状況を要確認。<br>
+・店舗の当日営業と黒川温泉の日帰り入浴時間を出発前に再確認。
+</div></section></div>
+<footer>検索エンジン向け noindex / nofollow / noarchive 設定済み。URLを知る人は閲覧できます。</footer>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
+const m=L.map('map',{scrollWheelZoom:false}).setView([33.01,131.03],10);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(m);
+const C={d1:'#b8612f',d2:'#2b7655',d3:'#37739d'};
+const P={
+nakasu:[33.595,130.405,'福岡・中洲'],kuro:[33.078,131.143,'黒川温泉'],daikan:[32.996,131.070,'大観峰'],
+base:[32.819,131.123,'村田家旅館（高森）'],kusa:[32.884,131.052,'草千里ヶ浜'],museum:[32.883,131.052,'阿蘇火山博物館'],
+yone:[32.911,131.071,'米塚'],miyaji:[32.947,131.116,'宮地・阿蘇神社周辺'],meru:[32.846,130.992,'めるころ パン工房'],
+mochi:[32.934,131.103,'もちとこ'],milk:[32.983,131.015,'ミルクロード']
+};
+function marker(k,n,c){const p=P[k];L.circleMarker([p[0],p[1]],{radius:9,color:'#fff',weight:2,fillColor:c,fillOpacity:1}).addTo(m).bindTooltip(n+' '+p[2],{permanent:false,direction:'top'}).bindPopup('<b>'+n+' '+p[2]+'</b>')}
+[['kuro','1-2',C.d1],['daikan','1-3',C.d1],['base','宿', '#6c4d3c'],['kusa','2-1',C.d2],['museum','2-2',C.d2],['yone','2-3',C.d2],['miyaji','2-4',C.d2],['meru','3-1',C.d3],['mochi','3-2',C.d3],['milk','3-3',C.d3]].forEach(x=>marker(...x));
+const route=(ids,c)=>L.polyline(ids.map(k=>[P[k][0],P[k][1]]),{color:c,weight:4,opacity:.8,dashArray:'8 7'}).addTo(m);
+route(['kuro','daikan','base'],C.d1);route(['base','kusa','yone','miyaji','base'],C.d2);route(['base','meru','mochi','milk'],C.d3);
+const bounds=L.latLngBounds(Object.values(P).filter(p=>p[0]>32.7&&p[1]>130.9).map(p=>[p[0],p[1]]));m.fitBounds(bounds.pad(.08));
+</script></body></html>

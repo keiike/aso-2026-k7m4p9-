@@ -219,7 +219,12 @@
   document.querySelectorAll('.place').forEach(card=>{const p=byName.get(card.querySelector('h3')?.textContent);if(!p)return;const b=document.createElement('button');b.type='button';b.className='view-on-map';b.textContent='この地図に表示';b.addEventListener('click',()=>showFocus(p.id));(card.querySelector('.links')||card).prepend(b);});
   fitLocations([[32.805,130.97],[33.14,131.19]],11);
   let rendering=false;
-  map.on('zoomend moveend',()=>{if(rendering)return;rendering=true;render();rendering=false;});
+  map.on('zoomend',()=>{if(rendering)return;rendering=true;render();rendering=false;});
+  // Panning does not change marker proximity; keep popups alive during auto-pan.
+  map.on('moveend',()=>{
+    const list=filtered(),inView=list.filter(p=>map.getBounds().contains(coords(p))).length;
+    document.getElementById('map-status').textContent='追加候補 '+list.length+' / '+candidates.length+'か所を表示対象に設定（この地図内 '+inView+'か所）。数字の丸は近接する候補数。';
+  });
   render();
   if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>map.invalidateSize({pan:false})).observe(host);
 })();

@@ -24,7 +24,7 @@
   function set(name, value) {
     if (!names.has(name)) return;
     let next = {...saved};
-    try { next = read(); } catch (_) { /* Keep this tab's data when storage is blocked. */ }
+    try { if (storageOk) next = read(); } catch (_) { /* Keep this tab's data when storage is blocked. */ }
     if (value) next[name] = true; else delete next[name];
     saved = next;
     try { localStorage.setItem(KEY, JSON.stringify({version:1,places:saved})); storageOk = true; }

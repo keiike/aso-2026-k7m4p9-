@@ -1,4 +1,4 @@
-/* Map update 2026-09-20. No online geocoding, location tracking, or route recalculation. */
+/* Map 2026-09-20. Optional device location and manual visits use separate modules. */
 (() => {
   'use strict';
   const host = document.getElementById('map');
@@ -9,6 +9,7 @@
   }
   // Static public-address reference points, not verified entrances or parking locations.
   const raw = [
+    ...(window.ASO_HITA_GEO || []),
     ['セカンドストリート日田店',33.319560,130.930450,'published','店舗公式の経路案内座標','https://www.2ndstreet.jp/shop/details?shopsId=32075'],
     ['セカンドストリート太宰府店',33.507164,130.496490,'address','向佐野二丁目13番15号'],
     ['セカンドストリート筑紫野インター店',33.482281,130.523010,'address','上古賀四丁目9番1号'],
@@ -43,14 +44,15 @@
   const categories = {
     clothing: {name:'古着・上着', short:'衣', color:'#1e6883'},
     antiques: {name:'古道具・アンティーク', short:'古', color:'#765293'},
-    classics: {name:'追加の観光', short:'観', color:'#946717'}
+    classics: {name:'追加の観光', short:'観', color:'#946717'},
+    titans: {name:'進撃の日田', short:'進', color:'#985149'}
   };
   const guide = typeof ASO_GUIDE === 'undefined' ? {} : ASO_GUIDE;
   const candidates = Object.keys(categories).flatMap(category => (guide[category] || []).map((place,index) => ({...place, category, id:category+'-'+index, geo:GEO[place.name]})));
   const available = candidates.filter(p => p.geo && Number.isFinite(p.geo.lat) && Number.isFinite(p.geo.lng));
   const byId = new Map(available.map(p => [p.id,p]));
   const byName = new Map(available.map(p => [p.name,p]));
-  const state = {planned:true,clothing:true,antiques:true,classics:true,query:''};
+  const state = {planned:true,clothing:true,antiques:true,classics:true,titans:true,query:''};
   const style = document.createElement('style');
   style.textContent = `
   .map-panel{padding:11px;border:1px solid #dce2e4;border-radius:6px;background:#f8faf9;margin:0 0 10px;font-size:12px}
@@ -78,7 +80,7 @@
   `;
   document.head.appendChild(style);
   const toolbar = document.querySelector('.map-tools');
-  if (toolbar) toolbar.innerHTML = '<button id="local-map" type="button">阿蘇周辺</button><button id="miyaji-map" type="button">宮地を拡大</button><button id="wide-map" type="button">福岡〜熊本の全体</button>';
+  if (toolbar) toolbar.innerHTML = '<button id="local-map" type="button">阿蘇周辺</button><button id="miyaji-map" type="button">宮地を拡大</button><button id="wide-map" type="button">福岡〜熊本の全体</button><button id="hita-map" type="button">日田・進撃を拡大</button>';
   const panel = document.createElement('div');
   panel.className='map-panel';
   panel.innerHTML = '<fieldset><legend>地図に表示するもの</legend><div class="map-filter-row"><label><input type="checkbox" data-map-layer="planned" checked>予定ルート</label>'+Object.entries(categories).map(([id,c])=>'<label><input type="checkbox" data-map-layer="'+id+'" checked><span class="key-square" style="background:'+c.color+'">'+c.short+'</span>'+c.name+' '+(guide[id]||[]).length+'</label>').join('')+'</div></fieldset><div class="map-search-row"><input id="map-search" type="search" aria-label="地図の追加候補を店名や住所で絞る" placeholder="候補ピンを検索：店名・地域・家具など"><button id="clear-map-search" type="button">クリア</button></div><div class="map-options"><button id="show-all-candidates" type="button">候補を全部表示</button><button id="show-planned-only" type="button">予定ルートのみ</button><button id="fit-candidates" type="button">表示中の候補に合わせる</button><label>背景 <select id="map-background" aria-label="背景地図"><option value="pale">地理院・淡色地図</option><option value="std">地理院・標準地図</option></select></label></div><label class="map-jump">お店・観光地へ移動<select id="map-place-select"><option value="">候補を選んで地図を拡大</option></select></label><p id="map-status" role="status" aria-live="polite"></p>';
@@ -128,6 +130,8 @@
     mochi:[32.933892,131.099367,'もちとこ（住所代表点）','もちとこ 阿蘇市西町885'],
     milk:[32.982845,131.015282,'ミルクロード・かぶと岩付近','かぶと岩展望所']
   };
+  const visits=window.AsoVisits;
+  const visitGroups={nakasu:['トヨタレンタカー中洲店'],hita:['セカンドストリート日田店'],kuro:['Au Pan & Coffee','Patisserie ROKU 麓','黒川温泉'],daikan:['大観峰'],base:['村田家旅館'],kusa:['草千里ヶ浜','阿蘇火山博物館'],yone:['米塚'],miyaji:['阿蘇神社・門前町','komeko','TOMMY’Sアンティーク＆ステンドグラス','森本金物店・阿蘇昭和レトロ雑貨','etu','みやがわ時計店'],meru:['めるころ パン工房'],mochi:['もちとこ'],milk:['ミルクロード']};
   const dayColors=['#b8612f','#2b7655','#37739d'];
   const trips=[['nakasu','hita','kuro','daikan','base'],['base','kusa','yone','miyaji','base'],['base','meru','mochi','milk','nakasu']];
   trips.forEach((trip,i)=>L.polyline(trip.map(k=>points[k].slice(0,2)),{pane:'tripLines',color:dayColors[i],weight:3,opacity:.78,dashArray:'8 7',interactive:false}).addTo(planned));
@@ -137,7 +141,9 @@
   routeSpecs.forEach(([key,n,color])=>{
     const p=points[key],box=document.createElement('div');box.className='map-popup';
     const b=document.createElement('h3');b.textContent=p[2];box.appendChild(b);box.appendChild(safeLink(google(p[3]),'Googleマップで確認 ↗'));
-    L.marker(p.slice(0,2),{pane:'tripStops',title:p[2],icon:L.divIcon({className:'route-pin',html:'<span class="route-face" style="--pin:'+color+'">'+n+'</span>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(planned).bindTooltip(p[2]).bindPopup(box);
+    if(visits){const group=document.createElement('div');group.className='visit-popup-stops';for(const name of visitGroups[key]||[]){const row=document.createElement('div');row.className='visit-stop';const title=document.createElement('span');title.textContent=name;row.append(title,visits.control(name));group.append(row);}box.append(group);}
+    const routeMarker=L.marker(p.slice(0,2),{pane:'tripStops',title:p[2],icon:L.divIcon({className:'route-pin',html:'<span class="route-face" style="--pin:'+color+'">'+n+'</span>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(planned).bindTooltip(p[2]).bindPopup(box);
+    visits?.bindMarker(routeMarker,visitGroups[key]||[]);
   });
   function matches(p){return state[p.category]&&(!state.query||[p.name,p.address,p.group,p.area,p.genre,p.type,p.slot,p.status,p.note].filter(Boolean).join(' ').toLocaleLowerCase().includes(state.query));}
   function filtered(){return available.filter(matches);}
@@ -155,15 +161,16 @@
     if(p.source)links.appendChild(safeLink(p.source,'営業情報の出典 ↗'));
     if(p.geo.source)links.appendChild(safeLink(p.geo.source,'位置の出典 ↗'));
     if(p.phone){const a=document.createElement('a');a.href='tel:'+p.phone.replace(/[^0-9+]/g,'');a.textContent='店舗に電話';links.appendChild(a);}
-    box.appendChild(links);return box;
+    box.appendChild(links);if(visits)box.append(visits.control(p.name));return box;
   }
   function makePin(p,pane='candidatePins'){
     const c=categories[p.category],approx=p.geo.precision==='area';
-    return L.marker(coords(p),{pane,title:p.name+(approx?'（地区の概略位置）':''),icon:L.divIcon({className:'map-pin',html:'<span class="pin-face'+(approx?' approx':'')+'" style="--pin:'+c.color+'">'+c.short+'</span>',iconSize:[27,27],iconAnchor:[13.5,13.5]}),keyboard:true}).bindTooltip(p.name+(approx?'［概略位置］':''),{direction:'top'}).bindPopup(popup(p),{maxWidth:290,maxHeight:330});
+    const marker=L.marker(coords(p),{pane,title:p.name+(approx?'（地区の概略位置）':''),icon:L.divIcon({className:'map-pin',html:'<span class="pin-face'+(approx?' approx':'')+'" style="--pin:'+c.color+'">'+c.short+'</span>',iconSize:[27,27],iconAnchor:[13.5,13.5]}),keyboard:true}).bindTooltip(p.name+(approx?'［概略位置］':''),{direction:'top'}).bindPopup(popup(p),{maxWidth:290,maxHeight:330});
+    visits?.bindMarker(marker,[p.name]);return marker;
   }
   function fitLocations(locations,maxZoom=14){if(!locations.length)return;map.fitBounds(L.latLngBounds(locations),{padding:[28,28],maxZoom,animate:false});}
   function showFocus(id,scroll=true){
-    const p=byId.get(id);if(!p)return;
+    const p=byId.get(id);if(!p)return;map.closePopup();
     clearTimeout(timer);state[p.category]=true;state.query='';document.getElementById('map-search').value='';
     panel.querySelector('[data-map-layer="'+p.category+'"]').checked=true;
     selectedId=id;select.value=id;
@@ -189,10 +196,11 @@
       const center=[g.items.reduce((v,p)=>v+p.geo.lat,0)/g.items.length,g.items.reduce((v,p)=>v+p.geo.lng,0)/g.items.length];
       const box=document.createElement('div');box.className='map-popup';const h=document.createElement('h3');h.textContent='近くの候補 '+g.items.length+'か所';box.appendChild(h);
       const listBox=document.createElement('div');listBox.className='cluster-list';
-      g.items.forEach(p=>{const button=document.createElement('button');button.type='button';button.textContent=categories[p.category].short+'｜'+p.name;button.onclick=()=>showFocus(p.id,false);listBox.appendChild(button);});
+      g.items.forEach(p=>{const button=document.createElement('button');button.type='button';button.textContent=categories[p.category].short+'｜'+p.name;button.dataset.visitLabel=p.name;button.onclick=()=>showFocus(p.id,false);const entry=document.createElement('div');entry.className='cluster-entry';entry.append(button);if(visits)entry.append(visits.control(p.name));listBox.append(entry);});
       box.appendChild(listBox);
       const zoom=document.createElement('button');zoom.type='button';zoom.textContent='この周辺を拡大';zoom.onclick=()=>fitLocations(g.items.map(coords),17);box.appendChild(zoom);
-      L.marker(center,{pane:'candidatePins',title:'近くの候補 '+g.items.length+'か所',icon:L.divIcon({className:'cluster-pin',html:'<span class="cluster-face">'+g.items.length+'</span>',iconSize:[34,34],iconAnchor:[17,17]})}).addTo(pins).bindPopup(box,{maxWidth:290}).bindTooltip('タップして候補を選ぶ');
+      const clusterMarker=L.marker(center,{pane:'candidatePins',title:'近くの候補 '+g.items.length+'か所',icon:L.divIcon({className:'cluster-pin',html:'<span class="cluster-face">'+g.items.length+'</span>',iconSize:[34,34],iconAnchor:[17,17]})}).addTo(pins).bindPopup(box,{maxWidth:290}).bindTooltip('タップして候補を選ぶ');
+      visits?.bindMarker(clusterMarker,g.items.map(p=>p.name),true);
     }
     if(selectedId){
       const p=byId.get(selectedId);
@@ -204,6 +212,7 @@
     const inView=list.filter(p=>map.getBounds().contains(coords(p))).length;
     document.getElementById('map-status').textContent='追加候補 '+list.length+' / '+candidates.length+'か所を表示対象に設定（この地図内 '+inView+'か所）。数字の丸は近接する候補数。';
     host.dataset.candidateCount=String(list.length);host.dataset.plannedVisible=String(state.planned);
+    visits?.refresh();
   }
   panel.querySelectorAll('[data-map-layer]').forEach(input=>input.addEventListener('change',()=>{state[input.dataset.mapLayer]=input.checked;selectedId=null;render();}));
   document.getElementById('map-search').addEventListener('input',e=>{clearTimeout(timer);timer=setTimeout(()=>{state.query=e.target.value.trim().toLocaleLowerCase();selectedId=null;render();},100);});
@@ -214,6 +223,7 @@
   document.getElementById('show-planned-only').onclick=()=>{clearTimeout(timer);for(const k of Object.keys(categories)){state[k]=false;panel.querySelector('[data-map-layer="'+k+'"]').checked=false;}state.planned=true;panel.querySelector('[data-map-layer="planned"]').checked=true;selectedId=null;render();};
   document.getElementById('fit-candidates').onclick=()=>fitLocations(filtered().map(coords));
   document.getElementById('local-map').onclick=()=>fitLocations([[32.805,130.97],[33.14,131.19]],11);
+  document.getElementById('hita-map').onclick=()=>fitLocations(available.filter(p=>p.category==='titans').map(coords),13);
   document.getElementById('miyaji-map').onclick=()=>map.setView([32.9500,131.1162],16,{animate:false});
   document.getElementById('wide-map').onclick=()=>fitLocations([...available.map(coords),...Object.values(points).map(p=>p.slice(0,2))],11);
   document.querySelectorAll('.place').forEach(card=>{const p=byName.get(card.querySelector('h3')?.textContent);if(!p)return;const b=document.createElement('button');b.type='button';b.className='view-on-map';b.textContent='この地図に表示';b.addEventListener('click',()=>showFocus(p.id));(card.querySelector('.links')||card).prepend(b);});

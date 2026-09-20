@@ -20,7 +20,7 @@
     const oldPlaceChange = placeSelect.onchange;
     const guide = typeof ASO_GUIDE === 'undefined' ? {} : ASO_GUIDE;
     const places = new Map();
-    for (const category of ['clothing', 'antiques', 'classics']) {
+    for (const category of ['clothing', 'antiques', 'classics', 'titans']) {
       (guide[category] || []).forEach((p, index) => places.set(category + '-' + index, p));
     }
     const googleOption = document.createElement('option');
@@ -47,7 +47,7 @@
     frame.referrerPolicy = 'strict-origin-when-cross-origin'; frame.setAttribute('allowfullscreen', '');
     frame.hidden = true; stage.append(frame);
     const info = document.createElement('div'); info.className = 'google-map-info'; info.hidden = true;
-    info.innerHTML = '<b>Googleマップ表示</b><p>これは別表示の埋め込み地図です。予定ルートの破線・29か所の候補ピンは重なりません。上の「お店・観光地へ移動」で、選んだ地点を個別に表示できます。</p><p class="google-selected-place"></p><p class="google-frame-status" role="status" aria-live="polite"></p><button type="button" class="back-to-gsi">候補ピンの地図へ戻る</button><button type="button" class="retry-google-map">再読み込み</button><a class="open-google-map" target="_blank" rel="noopener noreferrer">Googleマップ本体で開く ↗</a><details><summary>表示方式について</summary><p>全ピンをGoogleの背景に重ねる方式にはMaps JavaScript APIの設定が必要です。このページでは課金設定を追加せず、Googleの地図全体を埋め込む方式を使っています。地理院地図へ戻ると候補・表示範囲の設定を引き継ぎます。Google内だけのパン・ズームは地理院側とは同期しません。</p></details>';
+    info.innerHTML = '<b>Googleマップ表示</b><p>これは別表示の埋め込み地図です。予定ルートの破線・32か所の候補ピンは重なりません。上の「お店・観光地へ移動」で、選んだ地点を個別に表示できます。</p><p class="google-selected-place"></p><p class="google-frame-status" role="status" aria-live="polite"></p><button type="button" class="back-to-gsi">候補ピンの地図へ戻る</button><button type="button" class="retry-google-map">再読み込み</button><a class="open-google-map" target="_blank" rel="noopener noreferrer">Googleマップ本体で開く ↗</a><details><summary>表示方式について</summary><p>全ピンをGoogleの背景に重ねる方式にはMaps JavaScript APIの設定が必要です。このページでは課金設定を追加せず、Googleの地図全体を埋め込む方式を使っています。地理院地図へ戻ると候補・表示範囲の設定を引き継ぎます。Google内だけのパン・ズームは地理院側とは同期しません。</p></details>';
     stage.before(info);
     const status = info.querySelector('.google-frame-status');
     const current = info.querySelector('.google-selected-place');
@@ -119,7 +119,7 @@
       if(!active){oldPlaceChange?.call(this,e);return;}
       const next=placeDestination(this.value);if(next)loadGoogle(next);
     };
-    for(const id of ['local-map','miyaji-map','wide-map']) {
+    for(const id of ['local-map','miyaji-map','wide-map','hita-map']) {
       const b=document.getElementById(id);if(!b)continue;
       const original=b.onclick;
       b.onclick=function(e){original?.call(this,e);if(active){placeSelect.value='';loadGoogle(areaDestination());}};

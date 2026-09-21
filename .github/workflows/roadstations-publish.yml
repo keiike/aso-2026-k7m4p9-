@@ -1,0 +1,136 @@
+name: Verify and publish roadside stations
+on:
+  push:
+    paths:
+      - '.github/workflows/roadstations-publish.yml'
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrate reviewed additions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,re
+          expected={'index.html':'ece925ce41f3be96449e52c4465fdf99d19755bc','map.js':'2b26ab9b85167064f121994db32d6bf3aac959e2','visited.js':'1ddedd6838234cef26f6692beab288f0c9fb6be5','google-map-view.js':'4d44a67b1ffb4e01a810304e8f5b9626191738f6'}
+          for name,sha in expected.items():
+            b=Path(name).read_bytes()
+            assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==sha,name+' changed since review'
+          def replace(name,old,new):
+            p=Path(name);s=p.read_text();assert s.count(old)==1,(name,old,s.count(old));p.write_text(s.replace(old,new))
+          replace('map.js','    ...(window.ASO_SWEETS_GEO || []),','    ...(window.ASO_SWEETS_GEO || []),\n    ...(window.ASO_STATIONS_GEO || []),')
+          replace('map.js',"    sweets: {name:'ソフト・スイーツ', short:'甘', color:'#a34d6c'}","    sweets: {name:'ソフト・スイーツ', short:'甘', color:'#a34d6c'},\n    stations: {name:'道の駅', short:'駅', color:'#356d62'}")
+          replace('map.js',"sweets:true,query:''","sweets:true,stations:true,query:''")
+          replace('visited.js',"['clothing','antiques','classics','titans','sweets']","['clothing','antiques','classics','titans','sweets','stations']")
+          replace('google-map-view.js',"['clothing', 'antiques', 'classics', 'titans', 'sweets']","['clothing', 'antiques', 'classics', 'titans', 'sweets', 'stations']")
+          anchor='<script src="milk-sweets.js?v=20260921-milk1"></script>'
+          replace('index.html',anchor,anchor+'\n<script src="roadstations.js?v=20260921-stations1"></script>')
+          for name,version in [('map.js','20260921-sweets1'),('visited.js','20260921-sweets1'),('google-map-view.js','20260921-milk1')]:
+            replace('index.html',name+'?v='+version,name+'?v=20260921-stations1')
+          p=Path('index.html');s=p.read_text()
+          s,n=re.subn(r'<p class="revision">.*?</p>','<p class="revision"><b>9/21更新：道の駅13候補とミルクロードの時間帯・経路案を追加。</b> 地図の「駅」ピンと訪問チェックに対応。追加候補は計59件（同じ施設内の売場を含む）。現在地・Google表示・既存の行程と訪問記録は維持しています。</p>',s,count=1);assert n==1
+          s=s.replace('「衣・古・観・進・甘」','「衣・古・観・進・甘・駅」')
+          s=s.replace('スイーツ14候補版。','スイーツ14候補・道の駅13候補版。')
+          assert 'noindex,nofollow,noarchive,nosnippet' in s
+          p.write_text(s)
+          PY
+          for f in *.js; do node --check "$f"; done
+      - run: python -m pip install playwright
+      - name: Test maps, station filters and visited persistence
+        run: |
+          mkdir -p /tmp/roadstations-check
+          python - <<'PY'
+          from pathlib import Path
+          import functools,http.server,threading,json,urllib.parse
+          from playwright.sync_api import sync_playwright,expect
+          root=Path.cwd();out=Path('/tmp/roadstations-check')
+          server=http.server.ThreadingHTTPServer(('127.0.0.1',8775),functools.partial(http.server.SimpleHTTPRequestHandler,directory=str(root)))
+          threading.Thread(target=server.serve_forever,daemon=True).start()
+          seed="""const k='aso-2026-k7m4p9-:visited:v1';if(!localStorage.getItem(k))localStorage.setItem(k,JSON.stringify({version:1,places:{etu:true,'kibaco（キバコ）':true}}));window.__geoCalls=0;Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(){window.__geoCalls++},watchPosition(){window.__geoCalls++;return 1},clearWatch(){}}});"""
+          results=[]
+          with sync_playwright() as p:
+            browser=p.chromium.launch(channel='chrome',headless=True)
+            try:
+              for width in [390,1366]:
+                context=browser.new_context(viewport={'width':width,'height':900},locale='ja-JP');context.add_init_script(seed)
+                page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                page.goto('http://127.0.0.1:8775/',wait_until='domcontentloaded');page.wait_for_selector('#locate-me')
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','59')
+                for selector,count in [('#roadstations .place',13),('#roadstations .view-on-map',13),('#sweets .place',14),('#titans .place',3),('#antique-list .place',20),('#clothing-list .place',4),('#classics-list .place',5)]:
+                  expect(page.locator(selector)).to_have_count(count)
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('kibaco（キバコ）')")
+                assert page.evaluate('__geoCalls')==0
+                assert 'noindex' in page.locator('meta[name=robots]').get_attribute('content')
+                names=page.evaluate('ASO_GUIDE.stations.map(p=>p.name)')
+                assert len(set(names))==13
+                for i,name in enumerate(names):
+                  page.select_option('#map-place-select','stations-'+str(i));page.wait_for_timeout(400)
+                  expect(page.locator('.leaflet-popup')).to_have_count(1)
+                  expect(page.locator('.leaflet-popup h3')).to_have_text(name)
+                  page.locator('.leaflet-popup input[data-visit-key]').check()
+                  assert page.evaluate('(n)=>AsoVisits.has(n)',name)
+                  checkbox=page.locator('#roadstations input[data-visit-key='+json.dumps(name,ensure_ascii=False)+']')
+                  expect(checkbox).to_be_checked()
+                  assert page.locator('.map-pin.visit-complete').count()>0
+                page.reload(wait_until='domcontentloaded');page.wait_for_selector('#locate-me')
+                for name in names:assert page.evaluate('(n)=>AsoVisits.has(n)',name)
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('kibaco（キバコ）')")
+                page.locator('[data-map-layer=stations]').uncheck()
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','46')
+                page.locator('[data-map-layer=stations]').check()
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','59')
+                page.locator('#show-stations-map').click();page.wait_for_timeout(500)
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','13')
+                expect(page.locator('#map')).to_have_attribute('data-planned-visible','false')
+                page.locator('#show-all-candidates').click();page.wait_for_timeout(400)
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','59')
+                page.select_option('#map-place-select','stations-0');page.wait_for_timeout(400)
+                expect(page.locator('.leaflet-popup h3')).to_have_text(names[0])
+                page.select_option('#map-background','google')
+                expect(page.locator('#google-map-frame')).to_be_visible()
+                page.select_option('#map-place-select','stations-4')
+                assert names[4] in urllib.parse.unquote_plus(page.locator('#google-map-frame').get_attribute('src'))
+                expect(page.locator('.google-visit-check input')).to_be_checked()
+                page.locator('#roadstations .view-on-map').first.click();page.wait_for_timeout(500)
+                expect(page.locator('#map')).to_have_attribute('data-map-view','gsi')
+                expect(page.locator('.leaflet-popup')).to_have_count(1)
+                expect(page.locator('.leaflet-popup h3')).to_have_text(names[0])
+                page.locator('.leaflet-popup input[data-visit-key]').uncheck()
+                assert not page.evaluate('(n)=>AsoVisits.has(n)',names[0])
+                assert page.evaluate("AsoVisits.has('etu')")
+                page.locator('#stations-search').fill('メロン')
+                expect(page.locator('#roadstations .place:visible')).to_have_count(1)
+                page.locator('#stations-search').fill('');page.locator('#open-stations').click()
+                expect(page.locator('#roadstations .place:visible')).to_have_count(13)
+                assert '13〜15時' in page.locator('#milkroad').inner_text()
+                for ident in ['milkroad-hita','milkroad-west']:
+                  assert 'google.com/maps/dir/' in page.locator('#'+ident).get_attribute('href')
+                page.locator('#map').scroll_into_view_if_needed();page.wait_for_timeout(800)
+                page.locator('#map').screenshot(path=str(out/f'map-{width}.png'))
+                page.locator('#roadstations .station-group').first.screenshot(path=str(out/f'stations-{width}.png'))
+                page.locator('#milkroad').screenshot(path=str(out/f'milkroad-{width}.png'))
+                assert not page.evaluate('document.documentElement.scrollWidth>innerWidth')
+                assert page.evaluate('__geoCalls')==0
+                assert not errors,errors
+                results.append({'width':width,'stations':13,'candidates':59,'oldVisitsPreserved':True,'newVisitsPersisted':True,'stationOnlyMap':True,'googleSelection':True,'locationNotRequested':True,'horizontalOverflow':False,'errors':errors})
+                context.close()
+            finally:
+              (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));browser.close();server.shutdown()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roadstations-browser-check
+          path: /tmp/roadstations-check/
+          retention-days: 2
+      - name: Publish only successful integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html map.js visited.js google-map-view.js
+          git commit -m 'Enable roadside station map category and Milk Road route guidance'
+          git push

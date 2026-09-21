@@ -1,0 +1,64 @@
+name: Read milk sweets map references
+on:
+  push:
+    paths:
+      - '.github/workflows/milk-sweets-references.yml'
+permissions:
+  contents: read
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read official map links and preserve current source for testing
+        run: |
+          mkdir -p /tmp/milk-references/source
+          cp *.js index.html /tmp/milk-references/source/
+          python - <<'PY'
+          import urllib.request,urllib.parse,re,html,json,pathlib,concurrent.futures
+          pages={
+           'factory':'https://asomilkfactory.com/about/',
+           'factory-tourism':'https://www.asocity-kanko.jp/spot/aso-milk-factory/',
+           'denku':'https://www.aso-denku.jp/access/',
+           'kusasenri':'https://www.newkusasenri.com/',
+           'ice':'https://www.asoice.jp/company',
+           'farmland':'https://asofarmland.co.jp/access',
+           'yamada':'https://www.yamada-milk.com/milk/',
+           'ranch':'https://aso-milk.jp/information/',
+           'ranch-home':'https://aso-milk.jp/',
+           'oguniya':'https://oguniya.com/access.html',
+           'couple':'https://ogunitown.info/tourism/5198/',
+           'sorairo':'https://ogunitown.info/tourism/1815/'
+          }
+          def read(item):
+           key,url=item
+           try:
+            req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; AsoTripReferenceCheck/1.0)'})
+            with urllib.request.urlopen(req,timeout=25) as r:
+             final=r.url;text=r.read().decode('utf-8',errors='replace')
+            links=[]
+            for raw in re.findall(r'(?:src|href|data-src)=[\"\']([^\"\']+)',text):
+             link=html.unescape(raw)
+             if any(x in link for x in ['google.com/maps','goo.gl/maps','maps.app.goo.gl']):
+              if link not in links:links.append(link)
+            coordinates=re.findall(r'.{0,45}(?:"latitude"|"longitude"|"lat"|"lng"|!3d|!4d|!2d|LatLng\().{0,90}',text)
+            res={'key':key,'source':url,'final':final,'links':links[:10],'coordinates':coordinates[:12]}
+            for link in links[:3]:
+             if 'maps.app.goo.gl' in link or 'goo.gl/maps' in link:
+              try:
+               with urllib.request.urlopen(urllib.request.Request(link,headers={'User-Agent':'Mozilla/5.0'}),timeout=15) as rr:
+                res.setdefault('resolved',[]).append(rr.url)
+              except Exception as e:res.setdefault('resolve_errors',[]).append(str(e))
+            return res
+           except Exception as e:return {'key':key,'source':url,'error':str(e)}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+           results=list(pool.map(read,pages.items()))
+          pathlib.Path('/tmp/milk-references/references.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
+          for r in results:print('MAP_REFERENCE '+json.dumps(r,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: milk-sweets-references
+          path: /tmp/milk-references/
+          retention-days: 2

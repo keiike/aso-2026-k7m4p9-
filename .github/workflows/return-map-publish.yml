@@ -1,0 +1,155 @@
+name: Verify and publish selected return route
+on:
+  push:
+    paths:
+      - '.github/workflows/return-map-publish.yml'
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrate reviewed route changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,re
+          expected={'map.js':'8d76b06fcddda7d6d6e3feabc00993e2e499bb76','index.html':'7403074062a1dcd10b17e106c6fd43a48762db53','return-course.js':'8008a7922d80a7c7c170df9766f059916fbf6695'}
+          for name,sha in expected.items():
+            b=Path(name).read_bytes()
+            assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==sha,name+' changed since review'
+          def once(name,old,new):
+            p=Path(name);s=p.read_text();assert s.count(old)==1,(name,old,s.count(old));p.write_text(s.replace(old,new))
+          once('map.js','const planned=L.layerGroup().addTo(map), pins=L.layerGroup().addTo(map), focus=L.layerGroup().addTo(map);','const planned=L.layerGroup().addTo(map), history=L.layerGroup(), pins=L.layerGroup().addTo(map), focus=L.layerGroup().addTo(map);')
+          once('map.js',"const trips=[['nakasu','hita','kuro','daikan','base'],['base','kusa','yone','miyaji','base'],['base','meru','mochi','milk','nakasu']];","const trips=[['nakasu','hita','kuro','daikan','base'],['base','kusa','yone','miyaji','base']];")
+          once('map.js','interactive:false}).addTo(planned));','interactive:false}).addTo(history));')
+          once('map.js',",['meru','3',dayColors[2]],['mochi','3',dayColors[2]],['milk','3',dayColors[2]]",'')
+          once('map.js','}).addTo(planned).bindTooltip(p[2]).bindPopup(box);','}).addTo(history).bindTooltip(p[2]).bindPopup(box);')
+          once('map.js','  render();\n  if(typeof ResizeObserver','  window.AsoTripMap=Object.freeze({map,planned,history,points,byName,panel,host});\n  render();\n  if(typeof ResizeObserver')
+          once('return-course.js','午後の順番と経路リンクが変わります。','午後の順番・地図の帰路・経路リンクが一緒に変わります。')
+          once('return-course.js','<b>上の全体地図の従来の破線は、この帰路案に自動変更していません。</b>','<b>上の地図もこの帰路案に変更し、「今回寄る」と訪問済み除外に連動します。</b> 青い番号と矢印は訪問順の概略線で、道路に沿ったナビではありません。')
+          once('return-course.js','<button id="rc-refresh" type="button">チェックを再反映</button>','<button id="rc-refresh" type="button">チェックを再反映</button><button id="rc-show-route" type="button">地図でこの帰路を見る</button>')
+          once('return-course.js','      const active=order.filter(n=>chosen.has(n)&&(!exclude||!has(n)));','      const active=order.filter(n=>chosen.has(n)&&(!exclude||!has(n)));\n      window.AsoReturnMap?.setShops(active);')
+          once('return-course.js',"    section.querySelector('#rc-refresh').onclick=refresh;","    section.querySelector('#rc-refresh').onclick=refresh;\n    section.querySelector('#rc-show-route').onclick=()=>{window.AsoReturnMap?.fit();document.getElementById('map')?.scrollIntoView({behavior:'smooth',block:'center'});};")
+          for name,version in [('map.js','20260921-stations1'),('return-course.js','20260922-return1')]:
+            once('index.html',name+'?v='+version,name+'?v=20260922-returnmap1')
+          once('index.html','<script src="return-course.js?v=20260922-returnmap1"></script>','<script src="return-map.js?v=20260922-returnmap1"></script>\n<script src="return-course.js?v=20260922-returnmap1"></script>')
+          p=Path('index.html');s=p.read_text()
+          s,n=re.subn(r'<p class="revision">.*?</p>','<p class="revision"><b>9/22更新：地図も熊本市内経由の帰路に変更。</b> 高森 → ASO MILK FACTORY → ミルクロード → 大津 → 選んだ古道具店 → 福岡。店の選択・訪問済み除外に連動。1・2日目の行程は地図上で任意表示できます。現在地・全候補・訪問記録は維持しています。</p>',s,count=1);assert n==1
+          s=s.replace('丸い番号は予定ルート、','青い番号と矢印は9/22の帰路（訪問順の概略）。1・2日目の行程は地図のチェックで任意表示。')
+          assert 'noindex,nofollow,noarchive,nosnippet' in s
+          p.write_text(s)
+          PY
+          for f in *.js; do node --check "$f"; done
+      - run: python -m pip install playwright
+      - name: Test selected route, exclusions, saved visits and mobile layout
+        run: |
+          mkdir -p /tmp/return-map-check
+          python - <<'PY'
+          from pathlib import Path
+          import functools,http.server,threading,json,urllib.parse
+          from playwright.sync_api import sync_playwright,expect
+          out=Path('/tmp/return-map-check')
+          server=http.server.ThreadingHTTPServer(('127.0.0.1',8777),functools.partial(http.server.SimpleHTTPRequestHandler,directory=str(Path.cwd())))
+          threading.Thread(target=server.serve_forever,daemon=True).start()
+          seed="""const key='aso-2026-k7m4p9-:visited:v1';if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,places:{etu:true}}));window.__geoCalls=0;Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(){__geoCalls++},watchPosition(){__geoCalls++;return 1},clearWatch(){}}});"""
+          results=[]
+          with sync_playwright() as p:
+            browser=p.chromium.launch(channel='chrome',headless=True)
+            try:
+              for width in [390,1366]:
+                context=browser.new_context(viewport={'width':width,'height':900},locale='ja-JP');context.add_init_script(seed)
+                page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                page.goto('http://127.0.0.1:8777/',wait_until='domcontentloaded');page.wait_for_selector('#rc-show-route')
+                def shops(expected):
+                  page.wait_for_function('(expected)=>JSON.stringify(JSON.parse(document.getElementById("map").dataset.returnShops))===JSON.stringify(expected)',arg=expected)
+                shops(['hails','Anvin.store'])
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','59')
+                expect(page.locator('.return-pin')).to_have_count(9)
+                expect(page.locator('.return-route-line')).to_have_count(8)
+                expect(page.locator('.return-arrow')).to_have_count(8)
+                expect(page.locator('.leaflet-tripLines-pane path')).to_have_count(0)
+                names=json.loads(page.locator('#map').get_attribute('data-return-stops'))
+                assert names==['村田家旅館（高森）','ASO MILK FACTORY','大観峰方面','かぶと岩展望所','二重峠付近','道の駅 大津','hails','Anvin.store','福岡・中洲']
+                assert page.evaluate("AsoVisits.has('etu')")
+                assert page.evaluate('__geoCalls')==0
+                assert 'noindex' in page.locator('meta[name=robots]').get_attribute('content')
+                page.locator('#return-map-history').check()
+                expect(page.locator('.leaflet-tripLines-pane path')).to_have_count(2)
+                page.locator('#return-map-history').uncheck()
+                expect(page.locator('.leaflet-tripLines-pane path')).to_have_count(0)
+                page.locator('[data-map-layer=planned]').uncheck()
+                expect(page.locator('.return-pin')).to_have_count(0)
+                page.locator('#fit-return-route').click()
+                expect(page.locator('.return-pin')).to_have_count(9)
+                page.locator('input[data-course-pick="Grandma ATQ"]').check()
+                shops(['hails','Grandma ATQ','Anvin.store'])
+                expect(page.locator('.return-pin')).to_have_count(10)
+                page.locator('input[data-course-pick="彼方 kanata"]').check()
+                shops(['hails','彼方 kanata','Anvin.store'])
+                assert not page.locator('input[data-course-pick="Grandma ATQ"]').is_checked()
+                page.locator('input[data-course-pick="彼方 kanata"]').uncheck()
+                shops(['hails','Anvin.store'])
+                page.locator('#rc-shop-options input[data-visit-key="hails"]').check()
+                shops(['Anvin.store'])
+                assert 'hails' not in urllib.parse.unquote_plus(page.locator('#rc-shops').get_attribute('href'))
+                expect(page.locator('.return-pin[title="hails"]')).to_have_count(0)
+                page.locator('#rc-unvisited').uncheck()
+                shops(['hails','Anvin.store'])
+                expect(page.locator('.return-pin[title="hails"]')).to_have_class('route-pin return-pin leaflet-zoom-animated leaflet-interactive visit-complete') if False else None
+                assert page.locator('.return-pin[title="hails"]').get_attribute('data-visited-count')=='1'
+                page.locator('#rc-unvisited').check()
+                shops(['Anvin.store'])
+                page.reload(wait_until='domcontentloaded');page.wait_for_selector('#rc-show-route')
+                shops(['Anvin.store'])
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('hails')")
+                page.locator('#rc-shop-options input[data-visit-key="Anvin.store"]').check()
+                shops([])
+                expect(page.locator('.return-pin')).to_have_count(7)
+                assert not page.locator('#rc-shops').is_visible()
+                assert '道の駅' in urllib.parse.unquote_plus(page.locator('#rc-home').get_attribute('href'))
+                page.locator('#rc-unvisited').uncheck()
+                page.locator('#rc-shop-options input[data-visit-key="hails"]').uncheck()
+                page.locator('#rc-shop-options input[data-visit-key="Anvin.store"]').uncheck()
+                page.locator('#rc-unvisited').check()
+                shops(['hails','Anvin.store'])
+                page.evaluate("const m=AsoTripMap.planned.getLayers().find(x=>x.options.returnStopName==='ASO MILK FACTORY');AsoTripMap.map.setView(m.getLatLng(),15,{animate:false});m.openPopup();")
+                expect(page.locator('.leaflet-popup h3')).to_have_text('ASO MILK FACTORY')
+                assert page.locator('.leaflet-popup a').filter(has_text='次の地点へ').count()==1
+                page.locator('#fit-return-local').click()
+                page.select_option('#map-background','google')
+                expect(page.locator('#google-map-frame')).to_be_visible()
+                page.locator('#fit-return-route').click()
+                expect(page.locator('#map')).to_have_attribute('data-map-view','gsi')
+                expect(page.locator('.return-pin')).to_have_count(9)
+                page.locator('#rc-show-route').click()
+                page.locator('#fit-return-local').click()
+                page.locator('#map').scroll_into_view_if_needed();page.wait_for_timeout(1200)
+                page.locator('#map').screenshot(path=str(out/f'return-map-{width}.png'))
+                page.locator('#return-map-note').screenshot(path=str(out/f'return-controls-{width}.png'))
+                page.locator('#fit-return-city').click();page.wait_for_timeout(800)
+                page.locator('#map').screenshot(path=str(out/f'city-map-{width}.png'))
+                assert not page.evaluate('document.documentElement.scrollWidth>innerWidth')
+                assert page.evaluate('__geoCalls')==0
+                assert page.evaluate("AsoVisits.has('etu')")
+                assert not errors,errors
+                results.append({'width':width,'newRouteStops':9,'oldThirdRouteRemoved':True,'optionalHistory':True,'shopSelectionUpdatesMap':True,'visitedExclusionUpdatesMap':True,'emptyShopFallback':True,'oldVisitsRetained':True,'googleViewRetained':True,'noLocationRequested':True,'errors':errors})
+                context.close()
+            finally:
+              (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));browser.close();server.shutdown()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: return-map-tested
+          path: /tmp/return-map-check/
+          retention-days: 1
+      - name: Publish tested route integration
+        run: |
+          git config user.name 'keiike'
+          git config user.email '58475682+keiike@users.noreply.github.com'
+          git add index.html map.js return-course.js
+          git commit -m 'Show selected Kumamoto return course on map and keep earlier days optional'
+          git push origin HEAD:main

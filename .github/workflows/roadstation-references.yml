@@ -1,58 +1,43 @@
-name: Read official roadside-station references
+name: Finish verified roadside station update
 on:
   push:
     paths:
       - '.github/workflows/roadstation-references.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  references:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - name: Read official location references
+      - uses: actions/checkout@v4
+      - run: python -m pip install playwright pyyaml
+      - name: Apply reviewed integration and verify full text filtering
         run: |
           python - <<'PY'
-          import urllib.request,urllib.parse,re,html,json,concurrent.futures
-          root='https://www.qsr.mlit.go.jp/n-michi/michi_no_eki/kobetu/'
-          urls={
-            'aso':root+'aso/aso.html',
-            'kugino':root+'asobounosato/asobounosato.html',
-            'oguni':root+'oguni/oguni.html',
-            'namino':root+'namino/namino.html',
-            'ozu':root+'ozu/ozu.html',
-            'kyokushi':root+'kyokushi/kyokushi.html',
-            'shichijo':root+'shichijyo/shichijyo.html',
-            'kamoto':root+'mizubeplazakamoto/kamoto.html',
-            'kamitsue':root+'kamitsue/kamitsue.html',
-            'oyama':root+'oyama/oyama.html',
-            'ukiha':'https://michinoeki-ukiha.com/',
-            'harazuru':'https://fs-basaro.jp/',
-            'kurume':'https://www.michinoeki-kurume.com/access/'
-          }
-          def get(url):
-            with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; TripReferenceCheck/1.0)'}),timeout=20) as r:
-              b=r.read();text=b.decode('utf-8',errors='replace');return r.url,text
-          def read(item):
-            key,url=item
-            try:
-              final,text=get(url)
-              refs=[]
-              for x in re.findall(r'(?:href|src|data-src)=[\"\']([^\"\']+)',text):
-                x=html.unescape(x)
-                if any(a in x for a in ['google.com/maps','google.co.jp/maps','maps.google','maps.app.goo.gl','goo.gl/maps']):
-                  if x not in refs:refs.append(x)
-              resolved=[]
-              for link in refs[:3]:
-                if 'maps.app.goo.gl' in link or 'goo.gl/maps' in link:
-                  try:
-                    dest,_=get(link);resolved.append(dest)
-                  except Exception:pass
-              plain=html.unescape(re.sub('<[^>]+>',' ',text))
-              plain=re.sub(r'\s+',' ',plain)
-              snippets=[plain[max(0,m.start()-30):m.start()+180] for m in re.finditer('営業時間|休館日|休業日',plain)][:4]
-              return {'id':key,'source':url,'maps':refs[:5],'resolved':resolved,'hours':snippets}
-            except Exception as e:return {'id':key,'source':url,'error':str(e)}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            for result in pool.map(read,urls.items()):print('STATION '+json.dumps(result,ensure_ascii=False))
+          from pathlib import Path
+          import yaml,subprocess
+          source=yaml.safe_load(Path('.github/workflows/roadstations-publish.yml').read_text())
+          steps=source['jobs']['verify']['steps']
+          integration=next(s['run'] for s in steps if s.get('name')=='Integrate reviewed additions')
+          subprocess.run(['bash','-e','-c',integration],check=True)
+          test=next(s['run'] for s in steps if s.get('name')=='Test maps, station filters and visited persistence')
+          old="expect(page.locator('#roadstations .place:visible')).to_have_count(1)"
+          assert test.count(old)==1
+          new="expect(page.locator('#roadstations .place:visible')).to_have_count(2)\n      assert page.locator('#roadstations .place:visible').evaluate_all(\"nodes=>nodes.every(n=>n.textContent.includes('メロン'))\")"
+          test=test.replace(old,new)
+          subprocess.run(['bash','-e','-c',test],check=True)
           PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roadside-stations-tested
+          path: /tmp/roadstations-check/
+          retention-days: 2
+      - name: Publish only tested changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html map.js visited.js google-map-view.js
+          git commit -m 'Enable roadside-station category, visited checks and Milk Road guidance'
+          git push

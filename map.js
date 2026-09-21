@@ -11,6 +11,7 @@
   const raw = [
     ...(window.ASO_HITA_GEO || []),
     ...(window.ASO_SWEETS_GEO || []),
+    ...(window.ASO_STATIONS_GEO || []),
     ['セカンドストリート日田店',33.319560,130.930450,'published','店舗公式の経路案内座標','https://www.2ndstreet.jp/shop/details?shopsId=32075'],
     ['セカンドストリート太宰府店',33.507164,130.496490,'address','向佐野二丁目13番15号'],
     ['セカンドストリート筑紫野インター店',33.482281,130.523010,'address','上古賀四丁目9番1号'],
@@ -47,14 +48,15 @@
     antiques: {name:'古道具・アンティーク', short:'古', color:'#765293'},
     classics: {name:'追加の観光', short:'観', color:'#946717'},
     titans: {name:'進撃の日田', short:'進', color:'#985149'},
-    sweets: {name:'ソフト・スイーツ', short:'甘', color:'#a34d6c'}
+    sweets: {name:'ソフト・スイーツ', short:'甘', color:'#a34d6c'},
+    stations: {name:'道の駅', short:'駅', color:'#356d62'}
   };
   const guide = typeof ASO_GUIDE === 'undefined' ? {} : ASO_GUIDE;
   const candidates = Object.keys(categories).flatMap(category => (guide[category] || []).map((place,index) => ({...place, category, id:category+'-'+index, geo:GEO[place.name]})));
   const available = candidates.filter(p => p.geo && Number.isFinite(p.geo.lat) && Number.isFinite(p.geo.lng));
   const byId = new Map(available.map(p => [p.id,p]));
   const byName = new Map(available.map(p => [p.name,p]));
-  const state = {planned:true,clothing:true,antiques:true,classics:true,titans:true,sweets:true,query:''};
+  const state = {planned:true,clothing:true,antiques:true,classics:true,titans:true,sweets:true,stations:true,query:''};
   const style = document.createElement('style');
   style.textContent = `
   .map-panel{padding:11px;border:1px solid #dce2e4;border-radius:6px;background:#f8faf9;margin:0 0 10px;font-size:12px}

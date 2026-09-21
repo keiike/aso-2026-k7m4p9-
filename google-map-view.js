@@ -20,7 +20,7 @@
     const oldPlaceChange = placeSelect.onchange;
     const guide = typeof ASO_GUIDE === 'undefined' ? {} : ASO_GUIDE;
     const places = new Map();
-    for (const category of ['clothing', 'antiques', 'classics', 'titans', 'sweets']) {
+    for (const category of ['clothing', 'antiques', 'classics', 'titans', 'sweets', 'stations']) {
       (guide[category] || []).forEach((p, index) => places.set(category + '-' + index, p));
     }
     const googleOption = document.createElement('option');

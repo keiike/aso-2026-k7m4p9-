@@ -1,0 +1,111 @@
+name: Verify return course
+on:
+  push:
+    paths:
+      - '.github/workflows/return-course-check.yml'
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrate return plan into the reviewed page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,re
+          p=Path('index.html');b=p.read_bytes()
+          assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()=='00d34c8d8c5953196735e4056f06d6f04a5f92fd','Page changed since review'
+          s=b.decode();assert 'return-course.js' not in s
+          s=s.replace('</body></html>','<script src="return-course.js?v=20260922-return1"></script></body></html>')
+          s,n=re.subn(r'<p class="revision">.*?</p>','<p class="revision"><b>9/22更新：ミルクロード＋未訪問の古道具店を回る帰路案を追加。</b> <a href="#return-course">帰路コースへ</a>。この端末のチェックを使って訪問済み店を除外できます。掲載店の当日営業は未照会。既存の地図・現在地・訪問記録を維持しています。</p>',s,count=1);assert n==1
+          assert 'noindex,nofollow,noarchive,nosnippet' in s
+          p.write_text(s)
+          PY
+          for f in *.js; do node --check "$f"; done
+      - run: python -m pip install playwright
+      - name: Test filtering with synthetic visits, mobile layout and navigation
+        run: |
+          mkdir -p /tmp/return-check
+          python - <<'PY'
+          from pathlib import Path
+          import functools,http.server,threading,json,urllib.parse
+          from playwright.sync_api import sync_playwright,expect
+          root=Path.cwd();out=Path('/tmp/return-check')
+          server=http.server.ThreadingHTTPServer(('127.0.0.1',8776),functools.partial(http.server.SimpleHTTPRequestHandler,directory=str(root)))
+          threading.Thread(target=server.serve_forever,daemon=True).start()
+          # Synthetic fixture only. This is not the user's browser history.
+          seed="""const k='aso-2026-k7m4p9-:visited:v1';if(!localStorage.getItem(k))localStorage.setItem(k,JSON.stringify({version:1,places:{etu:true,hails:true}}));window.__geoCalls=0;Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(){window.__geoCalls++},watchPosition(){window.__geoCalls++;return 1},clearWatch(){}}});"""
+          results=[]
+          with sync_playwright() as p:
+            browser=p.chromium.launch(channel='chrome',headless=True)
+            try:
+              for width in [390,1366]:
+                context=browser.new_context(viewport={'width':width,'height':900},locale='ja-JP');context.add_init_script(seed)
+                page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                page.goto('http://127.0.0.1:8776/',wait_until='domcontentloaded');page.wait_for_selector('#return-course')
+                expect(page.locator('#map')).to_have_attribute('data-candidate-count','59')
+                for sel,n in [('#sweets .place',14),('#roadstations .place',13),('#antique-list .place',20),('#titans .place',3)]:expect(page.locator(sel)).to_have_count(n)
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('hails')")
+                expect(page.locator('[data-return-shop="hails"]')).to_be_hidden()
+                expect(page.locator('#rc-chain')).to_contain_text('Anvin.store')
+                assert 'hails' not in page.locator('#rc-chain').inner_text()
+                expect(page.locator('#rc-miyaji-left')).not_to_contain_text('etu')
+                assert page.evaluate('__geoCalls')==0
+                # Optional stops are mutually exclusive; existing visits are untouched.
+                page.locator('[data-course-pick="Grandma ATQ"]').check()
+                expect(page.locator('#rc-chain')).to_contain_text('Grandma ATQ')
+                page.locator('[data-course-pick="彼方 kanata"]').check()
+                expect(page.locator('[data-course-pick="Grandma ATQ"]')).not_to_be_checked()
+                expect(page.locator('#rc-chain')).to_contain_text('彼方 kanata')
+                page.locator('[data-course-pick="彼方 kanata"]').uncheck()
+                page.locator('[data-return-shop="Anvin.store"] input[data-visit-key]').check()
+                expect(page.locator('[data-return-shop="Anvin.store"]')).to_be_hidden()
+                expect(page.locator('#rc-shops')).to_be_hidden()
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('hails')&&AsoVisits.has('Anvin.store')")
+                page.reload(wait_until='domcontentloaded');page.wait_for_selector('#return-course')
+                expect(page.locator('[data-return-shop="Anvin.store"]')).to_be_hidden()
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('hails')")
+                # Undo a visit via the page without losing any other saved marks.
+                page.locator('#rc-unvisited').uncheck()
+                page.locator('[data-return-shop="hails"] input[data-visit-key]').uncheck()
+                page.locator('#rc-unvisited').check()
+                expect(page.locator('[data-return-shop="hails"]')).to_be_visible()
+                expect(page.locator('#rc-chain')).to_contain_text('hails')
+                assert page.evaluate("AsoVisits.has('etu')&&AsoVisits.has('Anvin.store')")
+                for ident in ['rc-morning','rc-scenic','rc-shops','rc-home']:
+                  href=page.locator('#'+ident).get_attribute('href');assert href and 'google.com/maps/dir/' in href
+                  q=urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+                  assert len(q.get('waypoints',[''])[0].split('|'))<=3
+                # Open an existing map pin from the new course, including Google mode exit.
+                page.select_option('#map-background','google')
+                page.locator('[data-return-shop="hails"] [data-course-map]').click()
+                expect(page.locator('#map')).to_have_attribute('data-map-view','gsi')
+                expect(page.locator('.leaflet-popup')).to_have_count(1)
+                expect(page.locator('.leaflet-popup h3')).to_have_text('hails')
+                expect(page.locator('.leaflet-popup input[data-visit-key]')).not_to_be_checked()
+                page.locator('#return-course').screenshot(path=str(out/f'return-{width}.png'))
+                assert not page.evaluate('document.documentElement.scrollWidth>innerWidth')
+                assert 'noindex' in page.locator('meta[name=robots]').get_attribute('content')
+                assert page.evaluate('__geoCalls')==0
+                assert not errors,errors
+                results.append({'width':width,'unchangedCandidates':59,'localVisitFiltering':True,'savedChecksPreserved':True,'optionalStopLimit':True,'mapJump':True,'noLocationRequest':True,'errors':errors})
+                context.close()
+            finally:
+              (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));browser.close();server.shutdown()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: return-course-tested
+          path: /tmp/return-check/
+          retention-days: 2
+      - name: Publish tested page integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Publish tested return course with device-local unvisited shop filtering"
+          git push origin HEAD:main

@@ -1,0 +1,38 @@
+name: Resolve milk shop map reference positions
+on:
+  push:
+    paths: ['.github/workflows/milk-location-details.yml']
+permissions:
+  contents: read
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Resolve shop map references
+        run: |
+          python - <<'PY'
+          import urllib.request,urllib.parse,re,json,html,concurrent.futures
+          urls={'denku':'https://www.aso-denku.jp/access/','yamada':'https://www.yamada-milk.com/milk/','ranch':'https://aso-milk.jp/information/','oguniya':'https://oguniya.com/access.html','couple':'https://ogunitown.info/tourism/5198/','sorairo':'https://ogunitown.info/tourism/1815/'}
+          def get(url):
+           with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'}),timeout=20) as r:return r.url,r.read().decode('utf-8',errors='replace')
+          def read(item):
+           key,url=item
+           try:
+            dest,text=get(url)
+            links=[html.unescape(x) for x in re.findall(r'(?:src|href)=[\"\']([^\"\']+)',text) if any(y in x for y in ['google.co.jp/maps','google.com/maps','maps.google.co.jp','maps.app.goo.gl'])]
+            result={'key':key,'source':url,'links':links[:4]}
+            if key=='denku':
+             result['coords']=[x for x in re.findall(r'.{0,55}(?:!3d|!4d|ll=|q=|sll=).{0,80}', '\n'.join(links))]
+            else:
+             ids=re.findall(r'!1s0x[0-9a-f]+(?:%3A|:)0x([0-9a-f]+)',str(links))
+             if ids:
+              cid=int(ids[0],16);final,body=get('https://www.google.com/maps?cid='+str(cid)+'&hl=ja')
+              result['place_url']=final
+              result['place_coords']=list(dict.fromkeys(re.findall(r'!3d([-0-9.]+)!4d([-0-9.]+)',body)))[:8]
+              result['meta']=re.findall(r'<meta[^>]+(?:og:image|og:title)[^>]+>',body)[:2]
+            return result
+           except Exception as e:return {'key':key,'error':str(e)}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+           for result in pool.map(read,urls.items()):print('POSITION '+json.dumps(result,ensure_ascii=False))
+          PY

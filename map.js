@@ -120,7 +120,7 @@
   }
   changeBackground('pale');
   L.control.scale({imperial:false}).addTo(map);
-  const planned=L.layerGroup().addTo(map), pins=L.layerGroup().addTo(map), focus=L.layerGroup().addTo(map);
+  const planned=L.layerGroup().addTo(map), history=L.layerGroup(), pins=L.layerGroup().addTo(map), focus=L.layerGroup().addTo(map);
   const points={
     nakasu:[33.595,130.405,'中洲・出発／返却（地区代表点）','トヨタレンタカー 中洲店 福岡'],
     hita:[33.319560,130.930450,'セカンドストリート日田店','セカンドストリート日田店 本庄町5-46'],
@@ -137,16 +137,16 @@
   const visits=window.AsoVisits;
   const visitGroups={nakasu:['トヨタレンタカー中洲店'],hita:['セカンドストリート日田店'],kuro:['Au Pan & Coffee','Patisserie ROKU 麓','黒川温泉'],daikan:['大観峰'],base:['村田家旅館'],kusa:['草千里ヶ浜','阿蘇火山博物館'],yone:['米塚'],miyaji:['阿蘇神社・門前町','komeko','TOMMY’Sアンティーク＆ステンドグラス','森本金物店・阿蘇昭和レトロ雑貨','etu','みやがわ時計店'],meru:['めるころ パン工房'],mochi:['もちとこ'],milk:['ミルクロード']};
   const dayColors=['#b8612f','#2b7655','#37739d'];
-  const trips=[['nakasu','hita','kuro','daikan','base'],['base','kusa','yone','miyaji','base'],['base','meru','mochi','milk','nakasu']];
-  trips.forEach((trip,i)=>L.polyline(trip.map(k=>points[k].slice(0,2)),{pane:'tripLines',color:dayColors[i],weight:3,opacity:.78,dashArray:'8 7',interactive:false}).addTo(planned));
-  const routeSpecs=[['nakasu','発','#54646c'],['hita','1',dayColors[0]],['kuro','1',dayColors[0]],['daikan','1',dayColors[0]],['base','宿','#6c4d3c'],['kusa','2',dayColors[1]],['yone','2',dayColors[1]],['miyaji','2',dayColors[1]],['meru','3',dayColors[2]],['mochi','3',dayColors[2]],['milk','3',dayColors[2]]];
+  const trips=[['nakasu','hita','kuro','daikan','base'],['base','kusa','yone','miyaji','base']];
+  trips.forEach((trip,i)=>L.polyline(trip.map(k=>points[k].slice(0,2)),{pane:'tripLines',color:dayColors[i],weight:3,opacity:.78,dashArray:'8 7',interactive:false}).addTo(history));
+  const routeSpecs=[['nakasu','発','#54646c'],['hita','1',dayColors[0]],['kuro','1',dayColors[0]],['daikan','1',dayColors[0]],['base','宿','#6c4d3c'],['kusa','2',dayColors[1]],['yone','2',dayColors[1]],['miyaji','2',dayColors[1]]];
   const safeLink=(url,text)=>{const a=document.createElement('a');a.href=url;a.textContent=text;a.target='_blank';a.rel='noopener noreferrer';return a;};
   const google=(name,address='')=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(name+' '+address.replace(/（[^）]*）/g,''));
   routeSpecs.forEach(([key,n,color])=>{
     const p=points[key],box=document.createElement('div');box.className='map-popup';
     const b=document.createElement('h3');b.textContent=p[2];box.appendChild(b);box.appendChild(safeLink(google(p[3]),'Googleマップで確認 ↗'));
     if(visits){const group=document.createElement('div');group.className='visit-popup-stops';for(const name of visitGroups[key]||[]){const row=document.createElement('div');row.className='visit-stop';const title=document.createElement('span');title.textContent=name;row.append(title,visits.control(name));group.append(row);}box.append(group);}
-    const routeMarker=L.marker(p.slice(0,2),{pane:'tripStops',title:p[2],icon:L.divIcon({className:'route-pin',html:'<span class="route-face" style="--pin:'+color+'">'+n+'</span>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(planned).bindTooltip(p[2]).bindPopup(box);
+    const routeMarker=L.marker(p.slice(0,2),{pane:'tripStops',title:p[2],icon:L.divIcon({className:'route-pin',html:'<span class="route-face" style="--pin:'+color+'">'+n+'</span>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(history).bindTooltip(p[2]).bindPopup(box);
     visits?.bindMarker(routeMarker,visitGroups[key]||[]);
   });
   function matches(p){return state[p.category]&&(!state.query||[p.name,p.address,p.group,p.area,p.genre,p.type,p.slot,p.status,p.note].filter(Boolean).join(' ').toLocaleLowerCase().includes(state.query));}
@@ -239,6 +239,7 @@
     const list=filtered(),inView=list.filter(p=>map.getBounds().contains(coords(p))).length;
     document.getElementById('map-status').textContent='追加候補 '+list.length+' / '+candidates.length+'か所を表示対象に設定（この地図内 '+inView+'か所）。数字の丸は近接する候補数。';
   });
+  window.AsoTripMap=Object.freeze({map,planned,history,points,byName,panel,host});
   render();
   if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>map.invalidateSize({pan:false})).observe(host);
 })();

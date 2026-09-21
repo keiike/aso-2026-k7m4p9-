@@ -22,7 +22,7 @@
     const dir = (origin,destination,waypoints=[]) => 'https://www.google.com/maps/dir/?'+new URLSearchParams({api:'1',origin,destination,travelmode:'driving',...(waypoints.length ? {waypoints:waypoints.join('|')} : {})});
     const section=document.createElement('section');section.id='return-course';section.className='section';
     section.innerHTML=`<h2>9/22 帰路案｜ミルクロード → 熊本の古道具</h2>
-      <p class="lead"><b>午前は阿蘇のミルクスイーツと草原ドライブ、午後は古道具店を2店＋任意1店。</b> 日田へ戻る従来案とは別の、西へ抜けるコースです。下の「今回寄る」で店を選ぶと、午後の順番と経路リンクが変わります。</p>
+      <p class="lead"><b>午前は阿蘇のミルクスイーツと草原ドライブ、午後は古道具店を2店＋任意1店。</b> 日田へ戻る従来案とは別の、西へ抜けるコースです。下の「今回寄る」で店を選ぶと、午後の順番・地図の帰路・経路リンクが一緒に変わります。</p>
       <div class="memo"><b>訪問記録と営業について</b>「未訪問」は、このブラウザの訪問チェックが付いていない店を指します。チェック内容はこの端末で読み取り、サーバーへ送信しません。実際に行った店には先にチェックしてください。<br>下の時間は<b>高森を9時に出る場合の計画枠</b>で、所要時間の実測・渋滞予測・予約ではありません。9/22の特別営業は電話確認していません。</div>
       <div class="rc-flow" aria-label="帰路の時間配分">
         <div><time>09:00</time><span>村田家旅館を出発。南阿蘇の買い物は必須にせず、内牧方面へ。</span></div>
@@ -33,11 +33,11 @@
         <div><time>17:00頃〜</time><span>福岡へ。帰福は高速利用なら19〜20時を計画枠にし、一般道ならさらに余裕を取る。実際の到着時刻はナビで再確認。<b>23日08:00中洲返却</b>に備えて給油・駐車。</span></div>
       </div>
       <p class="note">前の13〜15時のミルクロード案は日田経由の配分。今回の熊本市内店巡りでは、13時開店の店を午後に回るため山上を午前〜昼前へ前倒しします。道路規制・天候・駐車場の混雑を優先し、視界が悪ければ展望休憩は省略。</p>
-      <div class="rc-controls"><label><input id="rc-unvisited" type="checkbox" checked>訪問済みの古道具店をコースから外す</label><button id="rc-refresh" type="button">チェックを再反映</button></div>
+      <div class="rc-controls"><label><input id="rc-unvisited" type="checkbox" checked>訪問済みの古道具店をコースから外す</label><button id="rc-refresh" type="button">チェックを再反映</button><button id="rc-show-route" type="button">地図でこの帰路を見る</button></div>
       <p id="rc-status" role="status" aria-live="polite"></p><div id="rc-shop-options" class="rc-options"></div>
       <p id="rc-chain" class="rc-chain"></p>
       <div class="links rc-nav"><a id="rc-morning" target="_blank" rel="noopener noreferrer">① 宿 → ミルクスイーツ ↗</a><a id="rc-scenic" target="_blank" rel="noopener noreferrer">② ミルクロード → 大津 ↗</a><a id="rc-shops" target="_blank" rel="noopener noreferrer">③ 選んだ店を順に回る ↗</a><a id="rc-home" target="_blank" rel="noopener noreferrer">④ 最後の店 → 福岡 ↗</a></div>
-      <p class="note">Googleマップ用リンクはスマホ向けに分割（各区間の途中地点は3か所以内）。現在地から走る場合はGoogle側で出発地を変更してください。リンクは混雑を避ける最適化や営業確認を行うものではありません。<b>上の全体地図の従来の破線は、この帰路案に自動変更していません。</b></p>
+      <p class="note">Googleマップ用リンクはスマホ向けに分割（各区間の途中地点は3か所以内）。現在地から走る場合はGoogle側で出発地を変更してください。リンクは混雑を避ける最適化や営業確認を行うものではありません。<b>上の地図もこの帰路案に変更し、「今回寄る」と訪問済み除外に連動します。</b> 青い番号と矢印は訪問順の概略線で、道路に沿ったナビではありません。</p>
       <details class="rc-details"><summary>宮地に未訪問が残っている場合</summary><p id="rc-miyaji-left"></p><p>TOMMY’Sは11時、etuは12時開店。残りを優先するなら11〜12時台に宮地の店を1〜2店 → 昼食・スイーツ → 13〜14時台ミルクロード → 熊本市内は1〜2店へ減らす。朝9時から全店が開く前提にしない。</p></details>
       <details class="rc-details"><summary>スイーツを昼食後にしたい場合・出発が遅い場合</summary><p>ASO MILK FACTORYで11時から早めのランチとスイーツをまとめる案なら、道の駅大津での昼食は省略。ミルクロードは12〜13時台、市内の店は15時頃から2店を目安に。朝のスイーツのためだけに遠回りしない。</p><p>元の「もちとこ」に行くなら11:30の昼食 → ASO MILK FACTORYは短い休憩 → ミルクロードとし、市内はAnvin.storeを優先して1〜2店。遅れた分を山道の運転で取り戻さない。</p></details>
       <details class="rc-details"><summary>熊本側の店が休み・訪問済みなら日田側へ</summary><p id="rc-north-left"></p><p>代替は「ミルクロード → 小国・日田 → 四月の魚 → 地球屋 → 福岡」。熊本市内・山鹿と一度に回らない。四月の魚は11〜18時、地球屋は10〜18時の掲載。日田経由を選ぶ場合は、先に確認済みの<a href="#milkroad">東へ走って北上する経路案</a>へ切り替える。</p></details>
@@ -64,6 +64,7 @@
     const refresh=()=>{
       const exclude=section.querySelector('#rc-unvisited').checked;
       const active=order.filter(n=>chosen.has(n)&&(!exclude||!has(n)));
+      window.AsoReturnMap?.setShops(active);
       options.querySelectorAll('.rc-card').forEach(el=>{el.hidden=exclude&&has(el.dataset.returnShop);el.querySelector('[data-course-pick]').checked=chosen.has(el.dataset.returnShop);});
       const done=order.filter(has);
       section.querySelector('#rc-status').textContent='この案で選択中：'+active.length+'店。'+(done.length?'訪問チェック済み：'+done.join('・')+'。':'基本候補の訪問チェックはまだありません。')+' 営業確認済みという意味ではありません。';
@@ -85,6 +86,7 @@
     options.addEventListener('click',e=>{const b=e.target.closest('[data-course-map]');if(!b)return;const bg=document.getElementById('map-background');if(bg?.value==='google'){bg.value='pale';bg.dispatchEvent(new Event('change',{bubbles:true}));}const select=document.getElementById('map-place-select');if(select){select.value=b.dataset.courseMap;select.dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('map')?.scrollIntoView({behavior:'smooth',block:'center'});}});
     section.querySelector('#rc-unvisited').addEventListener('change',refresh);
     section.querySelector('#rc-refresh').onclick=refresh;
+    section.querySelector('#rc-show-route').onclick=()=>{window.AsoReturnMap?.fit();document.getElementById('map')?.scrollIntoView({behavior:'smooth',block:'center'});};
     document.addEventListener('change',e=>{if(e.target.matches('input[data-visit-key]'))setTimeout(refresh,0);});
     window.addEventListener('storage',()=>setTimeout(refresh,0));
     refresh();

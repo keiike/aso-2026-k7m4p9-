@@ -52,7 +52,7 @@
   function fit(list, maxZoom = 14) {
     if (!list.length) return;
     showRoute(); map.closePopup(); map.invalidateSize({pan:false});
-    map.fitBounds(L.latLngBounds(list.map(p => p.position)), {padding:[32,32], maxZoom, animate:false});
+    map.fitBounds(L.latLngBounds(list.map(p => p.position)), {paddingTopLeft:[30,85], paddingBottomRight:[30,30], maxZoom, animate:false});
   }
   function landmark(key, name, purpose, visitName) {
     const p = points[key];
@@ -108,7 +108,7 @@
     });
     host.dataset.returnStops = JSON.stringify(stops.map(p=>p.name));
     host.dataset.returnShops = JSON.stringify(selected);
-    host.dataset.returnVersion = '20260922-map1';
+    host.dataset.returnVersion = '20260922-map2';
     notice.querySelector('#return-map-chain').textContent = stops.map((p,i)=>(i+1)+' '+p.name).join(' → ');
     visits?.refresh();visibilityNote();
   }

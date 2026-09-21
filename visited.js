@@ -8,7 +8,7 @@
     ['白川水源','めるころ パン工房','もちとこ','ミルクロード']
   ];
   const guide = typeof ASO_GUIDE === 'undefined' ? {} : ASO_GUIDE;
-  const candidateNames = ['clothing','antiques','classics','titans'].flatMap(k => (guide[k] || []).map(p => p.name));
+  const candidateNames = ['clothing','antiques','classics','titans','sweets'].flatMap(k => (guide[k] || []).map(p => p.name));
   const names = new Set([...DAYS.flat(), ...candidateNames]);
   let saved = {}, storageOk = true;
   const markers = new Set();

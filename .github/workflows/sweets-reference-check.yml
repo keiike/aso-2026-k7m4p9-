@@ -1,0 +1,43 @@
+name: Check sweets map references
+on:
+  push:
+    paths:
+      - '.github/workflows/sweets-reference-check.yml'
+permissions:
+  contents: read
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read public shop map references
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.parse, re, html, concurrent.futures, json
+          urls={
+            'kibaco':'https://minamiaso.info/spot/yomyuru/',
+            'twinstar':'https://kikuchikanko.ne.jp/archives/gallery/store20240207',
+            'kuri':'https://www.kuriandsora.com/',
+            'kurifair':'https://yamagawaguri.com/shop/392',
+            'kobai':'https://maps.app.goo.gl/LgTs1DuC5YHsD4JT7'
+          }
+          def read(item):
+            key,url=item
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; TripReferenceCheck/1.0)'})
+              with urllib.request.urlopen(req,timeout=25) as r:
+                dest=r.url
+                text=r.read().decode('utf-8',errors='replace')
+              refs=[]
+              for raw in re.findall(r'(?:src|href|data-src|data-content)=[\"\']([^\"\']+)',text):
+                link=html.unescape(urllib.parse.unquote(raw))
+                if any(s in link for s in ['google.com/maps','goo.gl/maps','maps.app.goo.gl']):
+                  refs.append(link)
+              extra=[]
+              for match in re.finditer(r'!(?:3d|2d)[-0-9.]+|"(?:lat|lng|latitude|longitude)"\s*:\s*[-0-9.]+',text):
+                extra.append(match.group(0))
+              return {'name':key,'source':url,'final_url':dest,'map_links':refs[:12],'coordinate_fragments':extra[:30]}
+            except Exception as e:return {'name':key,'source':url,'error':str(e)}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+            for result in pool.map(read,urls.items()):print('REFERENCE_JSON '+json.dumps(result,ensure_ascii=False))
+          PY

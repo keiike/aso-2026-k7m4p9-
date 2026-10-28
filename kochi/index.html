@@ -1,31 +1,98 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow,noarchive">
-<meta name="referrer" content="strict-origin-when-cross-origin">
-<meta name="theme-color" content="#164f49">
-<meta name="description" content="高知市・南国・香美・香南と、その先の寄り道候補。古道具、器、喫茶、甘いもの、建築、自然、道の駅、温泉を調べるスポット図鑑。行程は未作成。">
-<title>高知 寄り道図鑑｜古道具・喫茶・自然を探す</title>
-<link rel="stylesheet" href="styles.css?v=20261028">
-<script defer src="app.js?v=20261028"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#fef7ff">
+  <meta name="description" content="高知のスポット一覧。名称、ジャンル、エリアによる検索、地図、お気に入り、訪問記録。">
+  <title>高知スポット</title>
+  <link rel="stylesheet" href="styles.css?v=md3-20261028">
+  <script defer src="app.js?v=md3-20261028"></script>
 </head>
 <body>
-<a class="skip" href="#results">スポット一覧へ</a>
-<header class="masthead"><div class="wrap mast-inner"><a href="./" class="wordmark">KOCHI<span>FIELD NOTES / 2026</span></a><nav aria-label="メイン"><a href="#results">候補を探す</a><a href="#map-section">地図</a><a href="#about">調べ方・範囲</a><a href="../">阿蘇版 ↗</a></nav></div></header>
-<main class="wrap">
-<section class="hero" aria-labelledby="hero-title"><div><p class="eyebrow">高知市・南国・香美・香南 ＋ その先</p><h1 id="hero-title">次の寄り道は、<br><em>まだ決めない。</em></h1><p class="intro">古い道具、小さな喫茶、川の色。<br>気になる場所を集めておく、高知のスポット図鑑。</p><div class="hero-tags"><span>行程は未作成</span><span>公開情報確認 2026.10.28</span></div></div><aside class="overview"><p class="eyebrow">THE COLLECTION</p><p class="total"><strong id="total-count">95</strong><span>件の候補</span></p><p>9ジャンル / 17エリア<br>中心圏を厚く、周辺は広く。</p><div class="scope-stats" id="scope-stats"></div><small>同じ敷地の施設・売店は関係を明記。<br>すべてを訪ねる予定ではありません。</small></aside></section>
-<section class="notice" aria-label="情報の鮮度"><span class="notice-label">訪問前に</span><p>掲載は営業保証ではありません。<b>工房の予約制・一部休室・季節の受付変更</b>をカードで確認し、リンク先の最新告知をチェックしてください。</p><button id="show-cautions" type="button">注意ありを見る</button></section>
-<section class="finder" aria-labelledby="finder-title"><div class="section-head"><div><p class="eyebrow">FIND YOUR PLACES</p><h2 id="finder-title">気分で、場所で、選ぶ。</h2></div><button class="text-button" id="reset" type="button">条件をリセット</button></div>
-<div class="search-row"><label class="search-box"><span>キーワード</span><input id="q" type="search" placeholder="例：古道具、紙、アイス、香美…" autocomplete="off"></label><label><span>エリア</span><select id="area"><option value="">すべてのエリア</option></select></label><label><span>範囲</span><select id="zone"><option value="">中心圏 ＋ 周辺すべて</option><option>中心圏</option><option>＋α</option><option>遠方参考</option></select></label></div>
-<div id="categories" class="chips" role="group" aria-label="ジャンルで絞り込み"></div>
-<div class="options"><label><input type="checkbox" id="picked">阿蘇版と好相性</label><label><input type="checkbox" id="favorite-only">お気に入りだけ</label><label><input type="checkbox" id="hide-visited">訪問済みを除く</label><label><input type="checkbox" id="caution-only">注意あり</label><label class="sort-label">並び順 <select id="sort"><option value="editorial">編集順（店・喫茶から）</option><option value="area">エリア順</option><option value="name">名前順</option></select></label></div>
-</section>
-<section id="map-section" class="map-section" aria-labelledby="map-title"><div class="section-head"><div><p class="eyebrow">AREA & LOCATION</p><h2 id="map-title">位置関係をつかむ。</h2></div><button id="map-toggle" type="button" aria-expanded="false" aria-controls="map-panel">地図を開く</button></div><p class="map-caption">俯瞰の丸印は<b>エリアの代表点</b>で、個々の店の位置ではありません。各カードの「地図」で店舗名・所在地をGoogleマップに表示します。</p><div id="map-panel" hidden><div class="map-tabs" role="group" aria-label="地図の種類"><button id="area-map-tab" type="button" aria-pressed="true">エリア俯瞰</button><button id="place-map-tab" type="button" aria-pressed="false">選んだ場所</button></div><div id="area-map-wrap"><div id="area-map" aria-label="エリアの代表点を示す地図"><p class="map-loading">地図を読み込みます。表示できない場合も下のエリアボタンと店舗リンクを使えます。</p></div><div id="area-buttons" class="area-buttons"></div><p class="fine">地図の件数は現在の絞り込みに連動します。エリアボタンからも絞り込めます。</p></div><div id="place-map-wrap" hidden><div class="place-map-heading"><b id="map-place-title">カードから場所を選んでください</b><a id="map-external" target="_blank" rel="noopener noreferrer" hidden>Googleマップで開く ↗</a></div><div id="place-map-empty">一覧の「地図」ボタンを押すと、ここに場所を表示します。</div><iframe id="place-map" title="選んだ場所のGoogleマップ検索結果" loading="lazy" referrerpolicy="no-referrer-when-downgrade" hidden></iframe><p class="fine">店名検索による地図です。同名店舗・入口・駐車場は公式アクセスと照合してください。外部地図には通信が必要です。</p></div></div></section>
-<section id="results" aria-labelledby="results-title"><div class="results-head"><h2 id="results-title"><span id="result-count">95</span><small>件を表示</small></h2><p id="filter-summary" role="status" aria-live="polite">すべての候補</p><button class="text-button" id="print" type="button">印刷</button></div><div id="cards" class="cards"></div><div id="empty" class="empty" hidden><h3>この条件の候補はありません。</h3><p>キーワードを短くするか、範囲・ジャンルの条件を減らしてください。</p><button type="button" id="empty-reset">条件をリセット</button></div><noscript><p>一覧の検索にはJavaScriptが必要です。<a href="spots.json">全候補のデータ</a>または<a href="README.md">調査メモ</a>をご覧ください。</p></noscript></section>
-<section id="about" class="about"><div><p class="eyebrow">HOW TO USE</p><h2>候補集であって、<br>行程表ではありません。</h2><p>阿蘇版の「古道具・暮らしの道具・喫茶・甘いもの・自然・道の駅」という軸を引き継ぎ、高知の建築、工芸、温泉まで広げました。「好相性」はその観点での編集上のおすすめです。</p><p>中心圏は高知市・南国・香美・香南。仁淀川流域、佐川・越知、土佐・須崎、嶺北、安芸を「＋α」に、北川や四国カルストなどを「遠方参考」に分けています。直線距離やエリア分類は移動所要時間の保証ではありません。</p><p>交通手段は未確定のため、車の利用や予約を前提にしていません。山間部の候補は、往復の交通・道路状況と合わせて検討してください。</p></div><div class="record-box"><h3>お気に入りと訪問記録</h3><p>記録はこの端末・このブラウザだけに保存されます。阿蘇版の記録とは分離しています。端末を変える場合は保存ファイルを移してください。</p><p class="record-counts" id="record-counts">お気に入り 0 / 訪問済み 0</p><div class="record-actions"><button id="export" type="button">記録を保存</button><label class="button">記録を読み込む<input id="import" type="file" accept="application/json,.json" hidden></label></div><p class="fine">読み込みは既存記録に追加します。個人の予定・予約情報は公開データに含めていません。位置情報の自動取得は行いません。</p><details><summary>情報の確認方法と限界</summary><p>公式店舗・施設、自治体、観光協会、道の駅連絡会の公開情報を優先。営業時間の食い違い、予約・見学条件、工事・展示替えは注意欄に記載しています。現地・電話での当日営業確認は未実施です。</p><p>休業の網羅的監視や、全店舗・全在庫の完全調査ではありません。営業時間が取得できなかった候補は不明なまま明記しています。料金は変動しやすいため原則リンク先で確認します。</p><p><a href="spots.json" download>全候補データ（JSON）</a> / <a href="README.md">調査・実装メモ</a></p></details></div></section>
-</main>
-<footer><div class="wrap footer-inner"><span>KOCHI FIELD NOTES · 2026.10.28</span><span>行く順番より、気になる理由を。</span><a href="https://github.com/keiike/aso-2026-k7m4p9-/tree/main/kochi" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div></footer><div id="toast" role="status" aria-live="polite" hidden></div><a href="#finder-title" class="back-top" aria-label="絞り込みへ戻る">↑<span>絞り込み</span></a>
+  <a class="skip-link" href="#main">本文へ</a>
+  <header class="app-bar">
+    <h1>高知スポット</h1>
+    <div class="app-bar-actions">
+      <button id="print" class="icon-button" type="button" aria-label="一覧を印刷" title="一覧を印刷"><span class="icon-face" data-icon="print"></span></button>
+      <button id="show-info" class="icon-button" type="button" aria-label="情報" title="情報"><span class="icon-face" data-icon="info"></span></button>
+    </div>
+  </header>
+  <nav class="navigation" aria-label="メインナビゲーション">
+    <a class="nav-item" href="#spots" data-view="spots" aria-current="page"><span class="nav-indicator" data-icon="list"></span><span>スポット</span></a>
+    <a class="nav-item" href="#map" data-view="map"><span class="nav-indicator" data-icon="map"></span><span>地図</span></a>
+    <a class="nav-item" href="#records" data-view="records"><span class="nav-indicator" data-icon="bookmark"></span><span>記録</span></a>
+  </nav>
+  <main id="main" tabindex="-1">
+    <section id="spots" class="view" aria-labelledby="spots-title">
+      <div class="search-toolbar">
+        <div class="text-field search-field">
+          <span class="field-icon" data-icon="search"></span>
+          <label for="q">キーワード</label>
+          <input id="q" type="search" placeholder="名称・所在地" autocomplete="off">
+          <button id="clear-search" type="button" class="icon-button" aria-label="検索語を消去" title="検索語を消去" hidden><span class="icon-face" data-icon="close"></span></button>
+        </div>
+        <button id="open-filters" class="md-button tonal" type="button"><span class="button-face"><span data-icon="tune"></span><span>絞り込み<span id="filter-count"></span></span></span></button>
+      </div>
+      <div id="categories" class="chips" role="group" aria-label="ジャンル"></div>
+      <div id="active-filters" class="active-filters" aria-label="適用中の条件" hidden></div>
+      <div class="results-toolbar">
+        <h2 id="spots-title">スポット <span id="result-count" role="status" aria-live="polite"></span></h2>
+        <div class="text-field sort-field"><label for="sort">並び順</label><select id="sort"><option value="editorial">掲載順</option><option value="area">エリア順</option><option value="name">名前順</option></select><span class="select-arrow" data-icon="expand"></span></div>
+      </div>
+      <p id="loading" class="supporting" role="status">読み込み中</p>
+      <div id="cards" class="cards"></div>
+      <div id="empty" class="empty-state" hidden><span data-icon="search"></span><h3>該当するスポットはありません</h3><button id="reset" class="md-button text" type="button"><span class="button-face">条件をリセット</span></button></div>
+      <noscript><p>一覧にはJavaScriptが必要です。<a href="spots.json">スポットデータ</a></p></noscript>
+    </section>
+    <section id="map" class="view" aria-labelledby="map-title" hidden>
+      <div class="page-heading"><h2 id="map-title" tabindex="-1">地図</h2><span id="map-count" class="supporting"></span></div>
+      <div class="segmented" role="group" aria-label="地図の表示"><button id="area-map-tab" type="button" aria-pressed="true"><span class="segment-face"><span class="selection-icon" data-icon="check"></span>エリア</span></button><button id="place-map-tab" type="button" aria-pressed="false"><span class="segment-face"><span class="selection-icon" data-icon="check"></span>スポット</span></button></div>
+      <div id="area-map-wrap">
+        <p class="supporting map-note">丸印はエリアの代表位置です。店舗の位置ではありません。</p>
+        <div id="area-map" class="map-container" aria-label="エリアの地図"><p class="map-message" role="status">読み込み中</p></div>
+        <div id="area-buttons" class="chips area-chips" role="group" aria-label="エリアで絞り込み"></div>
+      </div>
+      <div id="place-map-wrap" hidden>
+        <div id="place-map-empty" class="empty-state"><span data-icon="place"></span><h3>スポットを選択してください</h3><a class="md-button text" href="#spots"><span class="button-face">一覧へ</span></a></div>
+        <div id="place-map-content" hidden>
+          <div class="place-heading"><h3 id="map-place-title"></h3><a id="map-external" class="md-button outlined" target="_blank" rel="noopener noreferrer"><span class="button-face">Googleマップ<span data-icon="external"></span></span></a></div>
+          <iframe id="place-map" class="map-container" title="スポットの地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <p class="supporting">同名施設・入口・駐車場は公式アクセスで確認してください。</p>
+        </div>
+      </div>
+    </section>
+    <section id="records" class="view" aria-labelledby="records-title" hidden>
+      <div class="page-heading"><h2 id="records-title" tabindex="-1">記録</h2></div>
+      <div class="record-toolbar"><div class="segmented" role="group" aria-label="記録の種類"><button id="record-favorites" type="button" aria-pressed="true"><span class="segment-face"><span class="selection-icon" data-icon="check"></span>お気に入り <span id="favorites-count">0</span></span></button><button id="record-visited" type="button" aria-pressed="false"><span class="segment-face"><span class="selection-icon" data-icon="check"></span>訪問済み <span id="visited-count">0</span></span></button></div><div class="record-actions"><button id="export" class="md-button outlined" type="button"><span class="button-face"><span data-icon="download"></span>書き出し</span></button><button id="import-button" class="md-button text" type="button"><span class="button-face"><span data-icon="upload"></span>読み込み</span></button><input id="import" type="file" accept="application/json,.json" hidden></div></div>
+      <p class="supporting record-note">記録はこのブラウザに保存されます。読み込み時は既存の記録に追加します。</p>
+      <div id="record-cards" class="cards"></div>
+      <div id="records-empty" class="empty-state" hidden><span data-icon="bookmark"></span><h3 id="records-empty-label">お気に入りはありません</h3></div>
+    </section>
+  </main>
+  <dialog id="filter-dialog" class="md-dialog filter-dialog" aria-labelledby="filter-title">
+    <form id="filter-form">
+      <header class="dialog-header"><h2 id="filter-title">絞り込み</h2><button type="button" class="icon-button" data-close-dialog="filter-dialog" aria-label="閉じる"><span class="icon-face" data-icon="close"></span></button></header>
+      <div class="dialog-body filter-fields">
+        <div class="text-field"><label for="area">エリア</label><select id="area"><option value="">すべて</option></select><span class="select-arrow" data-icon="expand"></span></div>
+        <div class="text-field"><label for="zone">範囲</label><select id="zone"><option value="">すべて</option><option>中心圏</option><option>＋α</option><option>遠方参考</option></select><span class="select-arrow" data-icon="expand"></span></div>
+        <div class="checkbox-list"><label class="check-label"><span class="check-target"><input id="favorite-only" type="checkbox"><span class="check-box"></span></span><span>お気に入りのみ</span></label><label class="check-label"><span class="check-target"><input id="hide-visited" type="checkbox"><span class="check-box"></span></span><span>訪問済みを除く</span></label><label class="check-label"><span class="check-target"><input id="caution-only" type="checkbox"><span class="check-box"></span></span><span>注意事項あり</span></label></div>
+      </div>
+      <footer class="dialog-actions"><button id="reset-filters" class="md-button text" type="button"><span class="button-face">リセット</span></button><button class="md-button filled" type="submit"><span class="button-face">適用</span></button></footer>
+    </form>
+  </dialog>
+  <dialog id="info-dialog" class="md-dialog" aria-labelledby="info-title">
+    <header class="dialog-header"><h2 id="info-title">情報</h2><button class="icon-button" type="button" data-close-dialog="info-dialog" aria-label="閉じる"><span class="icon-face" data-icon="close"></span></button></header>
+    <div class="dialog-body info-body">
+      <dl><div><dt>収録</dt><dd id="total-count">95件</dd></div><div><dt>情報確認日</dt><dd id="checked-date">2026-10-28</dd></div><div><dt>中心圏</dt><dd>高知市・南国市・香美市・香南市</dd></div><div><dt>＋α</dt><dd>仁淀川流域、佐川・越知、土佐・須崎、嶺北、安芸</dd></div><div><dt>遠方参考</dt><dd>北川、梼原、四国カルストなど</dd></div></dl>
+      <p>営業情報は公開情報に基づきます。当日の営業・予約・交通条件は各施設の最新案内で確認してください。</p>
+      <p>お気に入りと訪問記録は端末・ブラウザごとに保存されます。阿蘇版の記録とは分離しています。</p>
+      <div class="info-links"><a href="spots.json" download>スポットデータ</a><a href="README.md" target="_blank" rel="noopener noreferrer">調査メモ</a><a href="../">阿蘇版</a><a href="https://github.com/keiike/aso-2026-k7m4p9-/tree/main/kochi" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+    </div>
+    <footer class="dialog-actions end"><button class="md-button text" type="button" data-close-dialog="info-dialog"><span class="button-face">閉じる</span></button></footer>
+  </dialog>
+  <div id="snackbar" class="snackbar" hidden><span id="snackbar-text" role="status" aria-live="polite"></span><button id="dismiss-snackbar" type="button" class="icon-button" aria-label="通知を閉じる"><span class="icon-face" data-icon="close"></span></button></div>
 </body>
 </html>
